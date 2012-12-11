@@ -191,7 +191,8 @@ constexpr struct PushFront {
 constexpr auto head = Get<0>();
 constexpr auto last = RGet<0>();
 
-constexpr struct Chainl {
+// Chain Left.
+constexpr struct ChainL {
     template< class F, class X >
     constexpr X operator () ( const F&, X x ) {
         return x;
@@ -205,6 +206,30 @@ constexpr struct Chainl {
     }
 } chainl{};
 
+// Fold Left.
+constexpr struct FoldL {
+    // Given f and {x,y,z}, returns f( f(x,y), z ).
+    template< class F, class T >
+    constexpr auto operator () ( const F& f, const T& t ) 
+        -> decltype( applyTuple(chainl,pushFront(t,f)) )
+    {
+        return applyTuple( chainl, pushFront(t,f) );
+    }
+} foldl{};
+
+// Fold Right.
+constexpr struct FoldR {
+    // Given f and {x,y,z}, returns f( f(z,y), x ).
+    template< class F, class T >
+    constexpr auto operator () ( const F& f, const T& t ) 
+        -> decltype( foldl(f,reverse(t)) )
+    {
+        return foldl( f, reverse(t) );
+    }
+} foldr{};
+
+auto ten = foldl( std::plus<int>(), std::make_tuple(1,2,3,4) );
+
 template< class ...X >
 constexpr auto third_arg( X&& ...x )
     -> Elem< 2, std::tuple<X...> >
@@ -212,11 +237,6 @@ constexpr auto third_arg( X&& ...x )
     return std::get<2>( std::forward_as_tuple(std::forward<X>(x)...) );
 }
 
-auto ten = applyTuple (
-    chainl,
-    // Returns ( (1+2) + 3 ) + 4 = 10
-    std::make_tuple( std::plus<int>(), 1, 2, 3, 4 )
-);
 
 template< class F, class ...X >
 struct TFunction {
