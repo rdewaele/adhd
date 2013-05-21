@@ -133,7 +133,7 @@ static void walk(struct options * options) {
 				nsread_new,
 				100 * (double)(nsread_new - nsread_old) / (double)nsread_old,
 				nsread_old, nsread_new,
-				(double)new_avg / ((double)options->aaccesses * options->frequency),
+				((double)options->frequency * (double)new_avg) / (double)options->aaccesses,
 				options->frequency,
 				fidx);
 		verbose(options, "\n");
