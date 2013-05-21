@@ -1,4 +1,4 @@
-PROGRAM = arraywalk
+PROGRAM = adhd
 # One could play with compiler optimizations to see whether those have any
 # effect.
 CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -W -Wall -Wextra -pedantic \
