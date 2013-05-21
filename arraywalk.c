@@ -78,6 +78,43 @@ void freeWalkArray(struct walkArray * array) {
 	free(array);
 }
 
+// Linear cycle, increasing indexes.
+struct timespec makeIncreasingWalkArray(walking_t len, struct walkArray ** result) {
+	struct timespec elapsed;
+	walking_t size = (walking_t)sizeof(walking_t) * len;
+	walking_t * array = malloc(size);
+
+	walking_t i;
+	for (i = 0; i < len - 1; ++i)
+		array[i] = i + 1;
+	array[i] = 0;
+
+	*result = malloc(sizeof(struct walkArray));
+	(*result)->array = array;
+	(*result)->size = size;
+	(*result)->len = len;
+
+	return elapsed;
+}
+
+// Linear cycle, decreasing indexes.
+struct timespec makeDecreasingWalkArray(walking_t len, struct walkArray ** result) {
+	struct timespec elapsed;
+	walking_t size = (walking_t)sizeof(walking_t) * len;
+	walking_t * array = malloc(size);
+
+	array[0] = len - 1;
+	for (walking_t i = 1; i < len; ++i)
+		array[i] = i - 1;
+
+	*result = malloc(sizeof(struct walkArray));
+	(*result)->array = array;
+	(*result)->size = size;
+	(*result)->len = len;
+
+	return elapsed;
+}
+
 // walk the array as encoded by makeRandomWalkArray(size_t size)
 walking_t walkArray(struct walkArray * array, size_t steps, struct timespec * elapsed) {
 	walking_t * a = array->array;

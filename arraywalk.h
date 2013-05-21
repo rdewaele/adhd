@@ -56,8 +56,14 @@ struct walkArray {
 	walking_t * array;
 };
 
-// Embed a random generated, non-cyclic path in an array of given length.
+// Encode a random generated cyclic path of given length in an array.
 struct timespec makeRandomWalkArray(walking_t len, struct walkArray ** result);
+
+// Encode a linear increasing cyclic path of given length in an array.
+struct timespec makeIncreasingWalkArray(walking_t len, struct walkArray ** result);
+
+// Encode a linear decreasing cyclic path of given length in an array.
+struct timespec makeDecreasingWalkArray(walking_t len, struct walkArray ** result);
 
 // Free the walkArray structure.
 void freeWalkArray(struct walkArray * array);
