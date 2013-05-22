@@ -2,6 +2,7 @@
 
 #include "arraywalk.h"
 
+#include <limits.h>
 #include <stdbool.h>
 #include <stdio.h>
 
@@ -20,7 +21,7 @@ struct options {
 	// cpu frequency to use in memory access cycles calculation
 	const float frequency;
 	// base filename for csv files (pid will be appended)
-	char * csvlogname;
+	char csvlogname[NAME_MAX];
 	// file to write Comma Separated Values to
 	FILE * csvlog;
 	// number of processes to run in parallel
@@ -33,4 +34,6 @@ struct options {
 	const bool Silent;
 };
 
-struct options options_parse(int argc, char * argv[]);
+void options_parse(int argc, char * argv[], struct options * options);
+
+void options_free(struct options * options);

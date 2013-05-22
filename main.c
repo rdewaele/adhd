@@ -39,21 +39,16 @@ static void walk(struct options * options) {
 	bool openedFile = false;
 	// TODO: remove csvlog from options, it doesn't make sense anymore for this
 	// multithreaded program
-	if (options->csvlogname && !options->csvlog) {
+	if (strlen(options->csvlogname) && !options->csvlog) {
 		const char * name = options->csvlogname;
-		// in principle, allocation size is a big overestimate,
-		// but still small in absolute numbers
-		const size_t tmpsz = strlen(name) + CHAR_BIT * sizeof(pid_t);
-		char * tmp = malloc(tmpsz);
-		snprintf(tmp, tmpsz, "%s_%lld.csv", name, (long long)pid);
+		char tmp[NAME_MAX];
+		snprintf(tmp, NAME_MAX, "%s_%lld.csv", name, (long long)pid);
 		options->csvlog = fopen(tmp, "w");
-		free(tmp);
 		openedFile = true;
 	}
 
 	// bookkeeping
 	nsec_t timings[options->repetitions];
-	size_t repetitions_ctr;
 	struct timespec elapsed;
 	nsec_t totalnsec;
 	nsec_t new_avg = 0;
@@ -82,18 +77,16 @@ static void walk(struct options * options) {
 		// test case warmup (helps reducing variance)
 		walkArray(array, options->aaccesses, &elapsed);
 		// test each case 'repetions' times (timed)
-		repetitions_ctr = options->repetitions;
 		walking_t fidx = 0;
-		while (repetitions_ctr--) {
+		for (size_t i = 0; i < options->repetitions; ++i) {
 			fidx = walkArray(array, options->aaccesses, &elapsed);
-			timings[repetitions_ctr] = timespecToNsec(&elapsed);
+			timings[i] = timespecToNsec(&elapsed);
 		}
 
 		// average
 		totalnsec = 0;
-		repetitions_ctr = options->repetitions;
-		while (repetitions_ctr--)
-			totalnsec += timings[repetitions_ctr];
+		for (size_t i = 0; i < options->repetitions; ++i)
+			totalnsec += timings[i];
 		// XXX whole division should be OK: timings are in the millions of nsec
 		new_avg = totalnsec / options->repetitions;
 		if (0 == old_avg)
@@ -101,9 +94,8 @@ static void walk(struct options * options) {
 
 		// standard deviation
 		totalnsec = 0;
-		repetitions_ctr = options->repetitions;
-		while (repetitions_ctr--) {
-			nsec_t current = timings[repetitions_ctr];
+		for (size_t i = 0; i < options->repetitions; ++i) {
+			nsec_t current = timings[i];
 			current = current > new_avg ? current - new_avg : new_avg - current;
 			totalnsec += current * current;
 		}
@@ -219,7 +211,8 @@ static void treeSpawn(struct options * options) {
 // program entry point
 int main(int argc, char * argv[]) {
 	struct timespec timer;
-	struct options options = options_parse(argc, argv);
+	struct options options;
+	options_parse(argc, argv, &options);
 
 	// print timer resolution
 	clock_getres(CLOCK_MONOTONIC, &timer);
@@ -233,21 +226,23 @@ int main(int argc, char * argv[]) {
 	// seed random at program startup
 	srand((unsigned)time(NULL));
 
-	// no children to spawn
 	if (1 == options.processes) {
+		// single threaded run
 		walk(&options);
-		return EXIT_SUCCESS;
+	} else {
+		// multithreaded run
+		switch (options.create) {
+			case TREE:
+				treeSpawn(&options);
+				break;
+			case LINEAR:
+				linearSpawn(&options);
+				break;
+		}
 	}
 
-	// multithreaded run
-	switch (options.create) {
-		case TREE:
-			treeSpawn(&options);
-			break;
-		case LINEAR:
-			linearSpawn(&options);
-			break;
-	}
+	// valgrind-cleanliness
+	options_free(&options);
 
 	return EXIT_SUCCESS;
 }

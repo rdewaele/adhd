@@ -1,6 +1,7 @@
 #include "arraywalk.h"
 #include "util.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,6 +40,7 @@ void freeWalkArray(struct walkArray * array) {
 	free(array);
 }
 
+// TODO: size may overflow if len > (walking_t_max / sizeof(walking_t))
 static void makeWalkArray(walking_t len, struct walkArray ** result) {
 	const walking_t size = (walking_t)sizeof(walking_t) * len;
 	walking_t * const array = malloc(size);
@@ -81,17 +83,19 @@ struct timespec makeDecreasingWalkArray(walking_t len, struct walkArray ** resul
 
 // Create a cycle using Sattolo's algorithm. This is the way the array will be
 // traversed in the benchmarks.
+// XXX assumes that len > 0
+//     (calling with len <= 1 doesn't make sense anyway)
 // TODO: check return values (malloc, ..)
-// TODO: size may overflow if len > (walking_t_max / sizeof(walking_t))
 struct timespec makeRandomWalkArray(walking_t len, struct walkArray ** result) {
+	assert(len > 0);
+
 	makeWalkArray(len, result);
 
 	struct timespec elapsed;
 	walking_t * const array = (*result)->array;
-	walking_t i;
 
 	// initialization step encodes index as values
-	for (i = 0; i < len; ++i)
+	for (walking_t i = 0; i < len; ++i)
 		array[i] = i;
 
 	// shuffle the array
@@ -103,7 +107,7 @@ struct timespec makeRandomWalkArray(walking_t len, struct walkArray ** result) {
 	walking_t rnd;
 	walking_t swap;
 	TIGHTLY_TIMED(
-	for (i = 0; i < len - 1; ++i) {
+	for (walking_t i = 0; i < len - 1; ++i) {
 		rnd = randMinMax(WALKING_T_CAST(i + 1), WALKING_T_CAST(len - 1));
 		swap = array[i];
 		array[i] = array[rnd];
