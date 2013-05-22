@@ -21,3 +21,9 @@
 
 # vim swap files
 *.swp
+
+# clang xml files (generated when analyzing)
+*.plist
+
+# .csv files, resulting from test runs
+*.csv

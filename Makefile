@@ -23,9 +23,12 @@ $(PROGRAM): $(OBJECTS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(PROGRAM) $(OBJECTS) $(MAKEDEP)
+	rm -f $(PROGRAM) $(OBJECTS) $(MAKEDEP) $(SOURCES:.c=.plist)
 
-.PHONY: clean
+analyze:
+	clang --analyze $(SOURCES)
+
+.PHONY: clean analyze
 
 $(MAKEDEP):
 	$(CC) -MM $(CFLAGS) $(SOURCES) > $@
