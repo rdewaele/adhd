@@ -13,6 +13,7 @@
 // (a)accesses
 // (c)reate method
 // (e)nd
+// (f)requency for CPU cycle calculations
 // (l)og
 // (p)rocesses
 // (r)epetitions
