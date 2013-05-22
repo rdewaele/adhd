@@ -8,4 +8,9 @@
 
 typedef long long nsec_t;
 #define PRINSEC "llu"
-void CSV_LogTimings(FILE * log, pid_t pid, struct walkArray * wa, nsec_t nsec, nsec_t stddev);
+void CSV_LogTimings(
+		FILE * log,
+		long long id,
+		struct walkArray * wa,
+		nsec_t nsec,
+		nsec_t stddev);

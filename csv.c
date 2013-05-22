@@ -4,8 +4,15 @@
 #include <stdint.h>
 #include <stdio.h>
 
-void CSV_LogTimings(FILE * log, pid_t pid, struct walkArray * wa, nsec_t nsec, nsec_t stddev) {
+void CSV_LogTimings(
+		FILE * log,
+		long long id,
+		struct walkArray * wa,
+		nsec_t nsec,
+		nsec_t stddev
+		)
+{
 	fprintf(log,
 			"%lld,%zu,%llu,%llu\n",
-			(long long)pid, wa->size, nsec, stddev);
+			id, wa->size, nsec, stddev);
 }
