@@ -28,6 +28,9 @@ clean:
 analyze:
 	clang --analyze $(SOURCES)
 
+valgrind: $(PROGRAM)
+	valgrind -v --leak-check=full ./$< -s 2048 -e 8192
+
 .PHONY: clean analyze
 
 $(MAKEDEP):
