@@ -1,14 +1,28 @@
+# main executable filename
 PROGRAM = adhd
+
+# dependencies supporting pkg-config
+PKGCONFIG_LIBS = libconfig
+
 # One could play with compiler optimizations to see whether those have any
 # effect.
+EXTRA_WARNINGS := -Wconversion -Wshadow -Wpointer-arith -Wcast-qual \
+								 -Wwrite-strings
+# conditionally add warnings known not to be recongnised by icc
+ifneq ($(CC),icc)
+	EXTRA_WARNINGS += -Wcast-align
+endif
 CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -W -Wall -Wextra -pedantic \
-	-Wconversion -Wshadow -Wpointer-arith -Wcast-qual -Wcast-align -Wwrite-strings \
+	$(EXTRA_WARNINGS) \
 	-O3 -funroll-loops \
 	-DNDEBUG \
+	$(shell pkg-config --cflags $(PKGCONFIG_LIBS)) \
 	$(CFLAGS)
-LDFLAGS += -lm -lrt
+LDFLAGS += -lm -lrt \
+					 $(shell pkg-config --libs $(PKGCONFIG_LIBS))
 
 SOURCES = main.c arraywalk.c util.c csv.c options.c
+VALGRIND_CONF = vgconfig.cfg
 OBJECTS = $(SOURCES:.c=.o)
 
 MAKEDEP = .make.dep
@@ -28,8 +42,8 @@ clean:
 analyze:
 	clang --analyze $(SOURCES)
 
-valgrind: $(PROGRAM)
-	valgrind -v --leak-check=full ./$< -s 2048 -e 8192
+valgrind: $(PROGRAM) $(VALGRIND_CONF)
+	valgrind -v --leak-check=full ./$< -i -c $(VALGRIND_CONF)
 
 .PHONY: clean analyze
 

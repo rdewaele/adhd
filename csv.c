@@ -12,7 +12,8 @@ void CSV_LogTimings(
 		nsec_t stddev
 		)
 {
-	fprintf(log,
-			"%lld,%zu,%llu,%llu\n",
-			id, wa->size, nsec, stddev);
+	if (log)
+		fprintf(log,
+				"%lld,%zu,%llu,%llu\n",
+				id, wa->size, nsec, stddev);
 }

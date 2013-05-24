@@ -32,19 +32,15 @@ static inline nsec_t timespecToNsec(struct timespec * t) {
 }
 
 // test for increasing cache sizes
-static void walk(struct options * options) {
-	// pid used for logging
+static void walk(const struct options * const options) {
+	// logging setup
 	const pid_t pid = getpid();
-	// flag to close log file if we opened it ourselves
-	bool openedFile = false;
-	// TODO: remove csvlog from options, it doesn't make sense anymore for this
-	// multithreaded program
-	if (strlen(options->csvlogname) && !options->csvlog) {
-		const char * name = options->csvlogname;
+	FILE * csvlog = NULL;
+
+	if (options->logging) {
 		char tmp[NAME_MAX];
-		snprintf(tmp, NAME_MAX, "%s_%lld.csv", name, (long long)pid);
-		options->csvlog = fopen(tmp, "w");
-		openedFile = true;
+		snprintf(tmp, NAME_MAX, "%s_%lld.csv", options->csvlogname, (long long)pid);
+		csvlog = fopen(tmp, "w");
 	}
 
 	// bookkeeping
@@ -102,8 +98,7 @@ static void walk(struct options * options) {
 		stddev = sqrt((double)(totalnsec / options->repetitions));
 
 		// report results
-		if (options->csvlog)
-			CSV_LogTimings(options->csvlog, pid, array, new_avg, lround(stddev));
+		CSV_LogTimings(csvlog, pid, array, new_avg, lround(stddev));
 
 		verbose(options, ">>>\t%"PRINSEC" usec"
 				" | delta %+2.2lf%%"
@@ -138,9 +133,9 @@ static void walk(struct options * options) {
 		freeWalkArray(array);
 	}
 
-	if (openedFile) {
-		fclose(options->csvlog);
-		options->csvlog = NULL;
+	if (csvlog) {
+		fclose(csvlog);
+		csvlog = NULL;
 	}
 }
 
@@ -168,7 +163,7 @@ stopSpawn:
 }
 
 // create the desired amount of children all from the same parent
-static void linearSpawn(struct options * options) {
+static void linearSpawn(const struct options * const options) {
 	unsigned nchildren = options->processes;
 	if(0 == spawnChildren(nchildren))
 		walk(options);
@@ -179,7 +174,7 @@ static void linearSpawn(struct options * options) {
 
 // create children in a tree-like fashion; i.e. children creating children
 // XXX assumes options.processes > 1
-static void treeSpawn(struct options * options) {
+static void treeSpawn(const struct options * const options) {
 	// TODO: maybe introduce support for configurable branching factors
 	unsigned todo = options->processes - 1; // initial thread will also calculate
 	unsigned nchildren = 0;
@@ -211,38 +206,36 @@ static void treeSpawn(struct options * options) {
 // program entry point
 int main(int argc, char * argv[]) {
 	struct timespec timer;
-	struct options options;
-	options_parse(argc, argv, &options);
+	struct options options_init;
+	options_parse(argc, argv, &options_init);
+	const struct options * const options = &options_init;
 
 	// print timer resolution
 	clock_getres(CLOCK_MONOTONIC, &timer);
-	verbose(&options, "Timer resolution: %ld seconds, %lu nanoseconds\n",
+	verbose(options, "Timer resolution: %ld seconds, %lu nanoseconds\n",
 			timer.tv_sec, timer.tv_nsec);
 
 	// nothing to do
-	if (0 == options.processes)
+	if (0 == options->processes)
 		return EXIT_SUCCESS;
 
 	// seed random at program startup
 	srand((unsigned)time(NULL));
 
-	if (1 == options.processes) {
+	if (1 == options->processes) {
 		// single threaded run
-		walk(&options);
+		walk(options);
 	} else {
 		// multithreaded run
-		switch (options.create) {
+		switch (options->create) {
 			case TREE:
-				treeSpawn(&options);
+				treeSpawn(options);
 				break;
 			case LINEAR:
-				linearSpawn(&options);
+				linearSpawn(options);
 				break;
 		}
 	}
-
-	// valgrind-cleanliness
-	options_free(&options);
 
 	return EXIT_SUCCESS;
 }
