@@ -3,6 +3,8 @@
 #include "csv.h"
 #include "options.h"
 
+// remember: assert generates NO CODE when NDEBUG is defined
+#include <assert.h>
 #include <errno.h>
 #include <inttypes.h>
 #include <limits.h>
@@ -59,6 +61,7 @@ static void walk(const struct options * const options) {
 		// array creation (timed)
 		totalnsec = 0;
 		elapsed = makeRandomWalkArray(array_len, &array);
+		assert(isFullCycle(array->array, array_len));
 		totalnsec += timespecToNsec(&elapsed);
 		if (array->size < 1024)
 			verbose(options, "%.6lu B", array->size);

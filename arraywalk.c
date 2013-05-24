@@ -3,6 +3,7 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
@@ -33,6 +34,31 @@
 	/* report timing */ \
 	time_var = (struct timespec){ stop.tv_sec - start.tv_sec, stop.tv_nsec - start.tv_nsec }
 #endif
+
+// Verify whether the input array implements a single cycle of a lengh equal
+// to the array itself.
+bool isFullCycle(walking_t * array, walking_t len) {
+	walking_t i, idx;
+	bool * visited = malloc(len * sizeof(bool));
+	bool allVisited = false;
+
+	for (i = 0; i < len; ++i)
+		visited[i] = false;
+
+	for (i = 0, idx = 0; i < len; ++i, idx = array[idx])
+		visited[idx] = true;
+
+	for (i = 0; i < len; ++i)
+		if (!(allVisited = visited[i]))
+			break; // cut short
+
+	free(visited);
+#ifndef NDEBUG
+	fprintf(stderr, "array at %p is verified: %scyclic (%"PRIWALKING" elements)\n",
+			(void*)array, allVisited? "" : "NOT ", len);
+#endif
+	return allVisited;
+}
 
 // Free the walkArray structure.
 void freeWalkArray(struct walkArray * array) {

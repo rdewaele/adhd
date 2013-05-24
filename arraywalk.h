@@ -1,6 +1,7 @@
 #pragma once
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -71,3 +72,9 @@ void freeWalkArray(struct walkArray * array);
 // Walk the array as encoded by makeRandomWalkArray(size_t len), store timing
 // information in 'elapsed' (must be valid), and return final index.
 walking_t walkArray(struct walkArray * array, size_t steps, struct timespec * elapsed);
+
+// Verify whether the input array implements a single cycle of a lengh equal
+// to the array itself.
+// Note that the make*WalkArray functions always return cycles conform to this
+// specification. (If they aren't, it's a bug.)
+bool isFullCycle(walking_t * array, walking_t len);
