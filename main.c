@@ -172,7 +172,11 @@ static void walk(const struct options * const options) {
 static pid_t spawnChildren(unsigned num) {
 	pid_t pid = 0;
 	while (num--) {
-		switch ((pid = fork())) {
+		pid = fork();
+#ifndef NDEBUG
+		fprintf(stderr, "thread %lld forked\n", (long long)pid);
+#endif // NDEBUG
+		switch (pid) {
 			case -1:
 				perror("child process creation");
 				exit(EXIT_FAILURE);
