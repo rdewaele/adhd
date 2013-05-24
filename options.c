@@ -17,6 +17,9 @@
 // (i)nformation about run configuration
 static const char * OPTSTR = "h?c:gi";
 
+// 'begin' default is just 0, but defined here to be consistent
+#define BEGIN_INIT 0
+
 // 'end' default must (only) be lowered when it doesn't fit in walking_t
 #if WALKING_MAX >= 1 << 23
 #define END_INIT 1 << 23
@@ -36,10 +39,11 @@ static const char * OPTSTR = "h?c:gi";
 static const char FLD_ARRAY_GROUP[] = "array";
 static const char FLD_ARRAY_ACCESSES[] = "accesses";
 static const char FLD_ARRAY_REPEAT[] = "repeat";
-static const char FLD_ARRAY_STARTLENGTH[] = "startlength";
+static const char FLD_ARRAY_BEGINLENGTH[] = "beginlength";
 static const char FLD_ARRAY_ENDLENGTH[] = "endlength";
 static const char FLD_ARRAY_INCREMENT[] = "increment"; 
 static const char FLD_ARRAY_SCALING[] = "scaling";
+static const char FLD_ARRAY_PATTERN[] = "pattern";
 static const char FLD_CPU_FREQUENCY[] = "CPU_frequency";
 static const char FLD_LOGGING[] = "logging";
 static const char FLD_LOGFILE[] = "logfile";
@@ -50,11 +54,13 @@ static const char FLD_SILENT[] = "silent";
 // load the default configuration in cfg
 static void set_default_config(config_t * cfg) {
 	static const unsigned AACCESSES = 4 * 1024 * 1024;
+	static const unsigned BEGIN = BEGIN_INIT;
 	static const char SPAWN[] = "tree";
 	static const long long END = END_INIT;
 	static const float FREQUENCY = 1;
 	static const bool LOGGING = false;
 	static const char LOGFILE[] = "adhd_log";
+	static const char PATTERN[] = "random";
 	static const unsigned THREADS = 1;
 	static const unsigned REPETITIONS = 50;
 	static const long long STEP = STEP_INIT;
@@ -80,8 +86,8 @@ static void set_default_config(config_t * cfg) {
 		config_setting_set_int64(setting, REPETITIONS);
 
 		// initial array size
-		setting = config_setting_add(array, FLD_ARRAY_STARTLENGTH, CONFIG_TYPE_INT64);
-		config_setting_set_int64(setting, STEP);
+		setting = config_setting_add(array, FLD_ARRAY_BEGINLENGTH, CONFIG_TYPE_INT64);
+		config_setting_set_int64(setting, BEGIN);
 
 		// maximal array size
 		setting = config_setting_add(array, FLD_ARRAY_ENDLENGTH, CONFIG_TYPE_INT64);
@@ -95,6 +101,11 @@ static void set_default_config(config_t * cfg) {
 		// (linear adds the increment, exponential multiplies the previous length)
 		setting = config_setting_add(array, FLD_ARRAY_SCALING, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, SCALING);
+
+		// walking pattern
+		// (sequentially increasing/decreasing or random)
+		setting = config_setting_add(array, FLD_ARRAY_PATTERN, CONFIG_TYPE_STRING);
+		config_setting_set_string(setting, PATTERN);
 	}
 
 	// miscellaneous
@@ -143,11 +154,12 @@ static void c2o_strncpy(
 static void config2options(const config_t * config, struct options * options) {
 	// array
 	long long aaccesses;
+	long long begin;
 	long long repetitions;
-	long long start;
 	long long end;
 	long long step;
 	char scaling[NAME_MAX];
+	char pattern[NAME_MAX];
 	// misc
 	double frequency;
 	int logging;
@@ -161,11 +173,13 @@ static void config2options(const config_t * config, struct options * options) {
 		config_setting_t * array = config_lookup(config, FLD_ARRAY_GROUP);
 		config_setting_lookup_int64(array, FLD_ARRAY_ACCESSES, &aaccesses);
 		config_setting_lookup_int64(array, FLD_ARRAY_REPEAT, &repetitions);
-		config_setting_lookup_int64(array, FLD_ARRAY_STARTLENGTH, &start);
+		config_setting_lookup_int64(array, FLD_ARRAY_BEGINLENGTH, &begin);
 		config_setting_lookup_int64(array, FLD_ARRAY_ENDLENGTH, &end);
 		config_setting_lookup_int64(array, FLD_ARRAY_INCREMENT, &step);
 		c2o_strncpy(scaling,
 				config_setting_get_member(array, FLD_ARRAY_SCALING), NAME_MAX);
+		c2o_strncpy(pattern,
+				config_setting_get_member(array, FLD_ARRAY_PATTERN), NAME_MAX);
 	}
 	// miscellaneous
 	{
@@ -178,11 +192,13 @@ static void config2options(const config_t * config, struct options * options) {
 	}
 	struct options tmp = {
 		(unsigned)aaccesses,
+		(walking_t)begin,
 		spawn_typeFromString(create),
 		(walking_t)end,
 		frequency,
 		logging,
-		"", // XXX strncpy !,
+		"", // XXX strncpy ! (log filename),
+		pattern_typeFromString(pattern),
 		(unsigned)threads,
 		(unsigned)repetitions,
 		(walking_t)step,
@@ -205,10 +221,12 @@ static void options_print(const struct options * options) {
 	fprintf(stderr,
 			"array accesses to perform: %u\n"
 			"thread spawn method: %s\n"
+			"initial array size: %"PRIWALKING"\n"
 			"maximum array size: %"PRIWALKING"\n"
 			"cpu clock frequency: %.3f\n"
 			"CSV log base name: %s\n"
 			"CSV logging enabled: %s\n"
+			"array walking pattern: %s\n"
 			"operating threads: %u\n"
 			"single test configuration repeat: %u\n"
 			"array increment: %"PRIWALKING"\n"
@@ -216,10 +234,12 @@ static void options_print(const struct options * options) {
 			"\n",
 			options->aaccesses,
 			spawn_typeToString(options->create),
+			options->begin,
 			options->end,
 			options->frequency,
 			options->csvlogname,
 			options->logging ? "yes" : "no",
+			pattern_typeToString(options->pattern),
 			options->processes,
 			options->repetitions,
 			options->step,
@@ -313,9 +333,26 @@ const char * spawn_typeToString(enum spawn_type st) {
 	}
 }
 
+const char * pattern_typeToString(enum pattern_type pt) {
+	switch (pt) {
+		CASE_ENUM2STRING(RANDOM);
+		CASE_ENUM2STRING(INCREASING);
+		CASE_ENUM2STRING(DECREASING);
+		default:
+		return NULL;
+	}
+}
+
 #define STRING2ENUM(SRC,ENUM) if (0 == strcasecmp(#ENUM, SRC)) return ENUM
 enum spawn_type spawn_typeFromString(const char * st) {
 	STRING2ENUM(st, TREE);
 	STRING2ENUM(st, LINEAR);
 	return TREE;
+}
+
+enum pattern_type pattern_typeFromString(const char * pt) {
+	STRING2ENUM(pt, RANDOM);
+	STRING2ENUM(pt, INCREASING);
+	STRING2ENUM(pt, DECREASING);
+	return RANDOM;
 }

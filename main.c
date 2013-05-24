@@ -52,7 +52,7 @@ static void walk(const struct options * const options) {
 	nsec_t new_avg = 0;
 	nsec_t old_avg = 0;
 	double stddev;
-	walking_t array_len = 0;
+	walking_t array_len = options->begin;
 	struct walkArray * array;
 
 	// check for overflow before actually incrementing the array size
@@ -60,7 +60,17 @@ static void walk(const struct options * const options) {
 			(array_len = WALKING_T_CAST(array_len + options->step)) <= options->end) {
 		// array creation (timed)
 		totalnsec = 0;
-		elapsed = makeRandomWalkArray(array_len, &array);
+		switch (options->pattern) {
+			case INCREASING:
+				elapsed = makeIncreasingWalkArray(array_len, &array);
+				break;
+			case DECREASING:
+				elapsed = makeDecreasingWalkArray(array_len, &array);
+				break;
+			case RANDOM:
+				elapsed = makeRandomWalkArray(array_len, &array);
+				break;
+		}
 		assert(isFullCycle(array->array, array_len));
 		totalnsec += timespecToNsec(&elapsed);
 		if (array->size < 1024)
@@ -103,6 +113,7 @@ static void walk(const struct options * const options) {
 		// report results
 		CSV_LogTimings(csvlog, pid, array, new_avg, lround(stddev));
 
+		// timing for a single run
 		verbose(options, ">>>\t%"PRINSEC" usec"
 				" | delta %+2.2lf%%"
 				" (%"PRINSEC" -> %"PRINSEC")"
@@ -112,6 +123,8 @@ static void walk(const struct options * const options) {
 				old_avg, new_avg,
 				lround(stddev / 1000), 100 * stddev / (double)new_avg
 				);
+
+		// timing for a single read
 		nsec_t nsread_old = old_avg / options->aaccesses;
 		nsec_t nsread_new = new_avg / options->aaccesses;
 		verbose(options, ">>>\t~%"PRINSEC" nsec/read"
@@ -126,6 +139,18 @@ static void walk(const struct options * const options) {
 				((double)options->frequency * (double)new_avg) / (double)options->aaccesses,
 				options->frequency,
 				fidx);
+
+		// bandwidth estimation for a single run
+		double totalbytes = (double)options->aaccesses * sizeof(walking_t);
+		double tb_new = totalbytes / (double)new_avg;
+		double tb_old = totalbytes / (double)old_avg;
+		verbose(options, ">>>\t~%.3lf GiB/s"
+			 " | delta %+2.2lf%%"
+			 " (%.3lf -> %.3lf)\n",
+			 tb_new,
+			 100 * (tb_new - tb_old) / tb_old,
+			 tb_old, tb_new);
+
 		verbose(options, "\n");
 
 		// inform user in time about every iteration
