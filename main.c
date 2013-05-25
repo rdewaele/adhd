@@ -9,6 +9,7 @@
 #include <inttypes.h>
 #include <limits.h>
 #include <math.h>
+#include <pthread.h>
 #include <stdarg.h>
 #include <stddef.h>
 #include <stdio.h>
@@ -167,14 +168,14 @@ static void walk(const struct options * const options) {
 	}
 }
 
-// create a new arraywalk child process
+// create new arraywalk child processes
 // XXX exit when child creation fails, as test will yield unexpected results
-static pid_t spawnChildren(unsigned num) {
+static pid_t spawnChildren_fork(unsigned num) {
 	pid_t pid = 0;
 	while (num--) {
 		pid = fork();
 #ifndef NDEBUG
-		fprintf(stderr, "thread %lld forked\n", (long long)pid);
+		fprintf(stderr, "process %lld forked\n", (long long)pid);
 #endif // NDEBUG
 		switch (pid) {
 			case -1:
@@ -194,10 +195,34 @@ stopSpawn:
 	return pid;
 }
 
+// add threads to the current process
+static bool spawnChildren_pthread(
+		unsigned num,
+		pthread_t * threads,
+		void * (* start)(void *),
+		void * arg)
+{
+	for (unsigned i = 0; i < num; ++i) {
+		int rc = pthread_create(threads++, NULL, start, arg);
+		switch (rc) {
+			case 0:
+				continue;
+				break;
+			case EAGAIN:
+			case EINVAL:
+			case EPERM:
+			default:
+				return false;
+				break;
+		}
+	}
+	return true;
+}
+
 // create the desired amount of children all from the same parent
 static void linearSpawn(const struct options * const options) {
 	unsigned nchildren = options->processes;
-	if(0 == spawnChildren(nchildren))
+	if(0 == spawnChildren_fork(nchildren))
 		walk(options);
 	else
 		while (nchildren--)
@@ -208,7 +233,7 @@ static void linearSpawn(const struct options * const options) {
 // XXX assumes options.processes > 1
 static void treeSpawn(const struct options * const options) {
 	// TODO: maybe introduce support for configurable branching factors
-	unsigned todo = options->processes - 1; // initial thread will also calculate
+	unsigned todo = options->processes - 1; // initial process will also calculate
 	unsigned nchildren = 0;
 	do {
 		switch ((nchildren = todo % 2)) {
@@ -223,7 +248,7 @@ static void treeSpawn(const struct options * const options) {
 		// parent breaks out loop and starts calculating;
 		// children continue to create their own children first
 		todo = (todo - nchildren) / nchildren;
-		if (spawnChildren(nchildren) > 0)
+		if (spawnChildren_fork(nchildren) > 0)
 			break;
 
 	} while (todo > 0);
@@ -255,10 +280,10 @@ int main(int argc, char * argv[]) {
 	srand((unsigned)time(NULL));
 
 	if (1 == options->processes) {
-		// single threaded run
+		// single process
 		walk(options);
 	} else {
-		// multithreaded run
+		// multiple processes
 		switch (options->create) {
 			case TREE:
 				treeSpawn(options);

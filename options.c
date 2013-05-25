@@ -48,8 +48,9 @@ static const char FLD_CPU_FREQUENCY[] = "CPU_frequency";
 static const char FLD_LOGGING[] = "logging";
 static const char FLD_LOGFILE[] = "logfile";
 static const char FLD_SPAWN[] = "spawn";
-static const char FLD_THREADS[] = "threads";
+static const char FLD_PROCESSES[] = "processes";
 static const char FLD_SILENT[] = "silent";
+static const char FLD_THREADS[] = "threads";
 
 // load the default configuration in cfg
 static void set_default_config(config_t * cfg) {
@@ -61,11 +62,12 @@ static void set_default_config(config_t * cfg) {
 	static const bool LOGGING = false;
 	static const char LOGFILE[] = "adhd_log";
 	static const char PATTERN[] = "random";
-	static const unsigned THREADS = 1;
+	static const unsigned PROCESSES = 1;
 	static const unsigned REPETITIONS = 50;
 	static const long long STEP = STEP_INIT;
 	static const char SCALING[] = "linear";
 	static const bool SILENT = false;
+	static const unsigned THREADS = 1;
 
 	config_setting_t *setting;
 	config_setting_t *root;
@@ -120,15 +122,20 @@ static void set_default_config(config_t * cfg) {
 		setting = config_setting_add(root, FLD_LOGGING, CONFIG_TYPE_BOOL);
 		config_setting_set_bool(setting, LOGGING);
 
-		// base filename to log thread timings to
+		// base filename to log process timings to
 		setting = config_setting_add(root, FLD_LOGFILE, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, LOGFILE);
 
-		// thread spawn method
+		// process spawn method
 		setting = config_setting_add(root, FLD_SPAWN, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, SPAWN);
 
-		// number of threads to run
+		// number of processes to run
+		// TODO: just like arrays we could have min/max and a linear or exponential increment
+		setting = config_setting_add(root, FLD_PROCESSES, CONFIG_TYPE_INT64);
+		config_setting_set_int64(setting, PROCESSES);
+
+		// number of threads per process to run
 		// TODO: just like arrays we could have min/max and a linear or exponential increment
 		setting = config_setting_add(root, FLD_THREADS, CONFIG_TYPE_INT64);
 		config_setting_set_int64(setting, THREADS);
@@ -165,6 +172,7 @@ static void config2options(const config_t * config, struct options * options) {
 	int logging;
 	char logfile[NAME_MAX];
 	char create[NAME_MAX];
+	long long processes;
 	long long threads;
 	int silent;
 
@@ -187,6 +195,7 @@ static void config2options(const config_t * config, struct options * options) {
 		config_lookup_bool(config, FLD_LOGGING, &logging);
 		c2o_strncpy(logfile, config_lookup(config, FLD_LOGFILE), NAME_MAX);
 		c2o_strncpy(create, config_lookup(config, FLD_SPAWN), NAME_MAX);
+		config_lookup_int64(config, FLD_PROCESSES, &processes);
 		config_lookup_int64(config, FLD_THREADS, &threads);
 		config_lookup_bool(config, FLD_SILENT, &silent);
 	}
@@ -199,10 +208,11 @@ static void config2options(const config_t * config, struct options * options) {
 		logging,
 		"", // XXX strncpy ! (log filename),
 		pattern_typeFromString(pattern),
-		(unsigned)threads,
+		(unsigned)processes,
 		(unsigned)repetitions,
 		(walking_t)step,
-		silent
+		silent,
+		(unsigned)threads
 	};
 	strncpy(tmp.csvlogname, logfile, NAME_MAX);
 	memcpy(options, &tmp, sizeof(struct options));
@@ -220,14 +230,15 @@ static void options_help(const char * name) {
 static void options_print(const struct options * options) {
 	fprintf(stderr,
 			"array accesses to perform: %u\n"
-			"thread spawn method: %s\n"
+			"process spawn method: %s\n"
 			"initial array size: %"PRIWALKING"\n"
 			"maximum array size: %"PRIWALKING"\n"
 			"cpu clock frequency: %.3f\n"
 			"CSV log base name: %s\n"
 			"CSV logging enabled: %s\n"
 			"array walking pattern: %s\n"
-			"operating threads: %u\n"
+			"operating processes: %u\n"
+			"threads per process: %u\n"
 			"single test configuration repeat: %u\n"
 			"array increment: %"PRIWALKING"\n"
 			"silent mode: %s\n"
@@ -241,6 +252,7 @@ static void options_print(const struct options * options) {
 			options->logging ? "yes" : "no",
 			pattern_typeToString(options->pattern),
 			options->processes,
+			options->threads,
 			options->repetitions,
 			options->step,
 			options->Silent ? "on" : "off"

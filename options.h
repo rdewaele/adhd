@@ -21,7 +21,7 @@ struct options {
 	unsigned aaccesses;
 	// initial size for the benchmark's array
 	walking_t begin;
-	// thread Creation
+	// process Creation
 	enum spawn_type create;
 	// upper size limit for the benchmark's array
 	walking_t end;
@@ -41,6 +41,8 @@ struct options {
 	walking_t step;
 	// silent mode
 	bool Silent;
+	// number of threads to run per process
+	unsigned threads;
 };
 
 void options_parse(int argc, char * argv[], struct options * options);

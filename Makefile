@@ -16,6 +16,7 @@ CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -W -Wall -Wextra -pedantic \
 	$(EXTRA_WARNINGS) \
 	-O3 -funroll-loops \
 	-DNDEBUG \
+	-pthread \
 	$(shell pkg-config --cflags $(PKGCONFIG_LIBS)) \
 	$(CFLAGS)
 LDFLAGS += -lm -lrt \
