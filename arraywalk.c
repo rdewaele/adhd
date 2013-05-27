@@ -162,6 +162,11 @@ walking_t walkArray(struct walkArray * array, size_t steps, struct timespec * el
 	register walking_t idx;
 #endif
 	idx = randMinMax(0, WALKING_T_CAST(array->len - 1));
-	TIGHTLY_TIMED(while(steps--) { idx = a[idx]; }, (*elapsed));
+	if (elapsed) {
+		TIGHTLY_TIMED(while(steps--) { idx = a[idx]; }, (*elapsed));
+	}
+	else {
+		while(steps--) { idx = a[idx]; }
+	}
 	return idx;
 }

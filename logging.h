@@ -1,6 +1,7 @@
 #pragma once
 
 #include "arraywalk.h"
+#include "options.h"
 
 #include <stdint.h>
 #include <stdio.h>
@@ -14,3 +15,6 @@ void CSV_LogTimings(
 		struct walkArray * wa,
 		nsec_t nsec,
 		nsec_t stddev);
+
+// user reporting
+void verbose(const struct options * options, const char *format, ...);
