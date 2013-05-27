@@ -100,8 +100,8 @@ void * runWalk(void * c) {
 
 		// run timed code
 		// TODO: option to enable or disable thread-local timing information
-		if (/* options->thread_timing */ false) {
-			nsec_t timings[options->repetitions];
+		nsec_t timings[options->repetitions];
+		if (/* options->thread_timing */ true) {
 			for (size_t i = 0; i < options->repetitions; ++i) {
 				walkArray(array, options->aaccesses, &elapsed);
 				timings[i] = timespecToNsec(&elapsed);
@@ -118,8 +118,9 @@ void * runWalk(void * c) {
 
 		freeWalkArray(array);
 
-		if (/* options->thread_timing */ false)
-			logWalkArray(options, timings);
+		// TODO: average
+		if (/* options->thread_timing */ true)
+			logWalkArray(options, timings, 0);
 
 		// overflow could cause infinite loop
 		if (WALKING_MAX - options->step < len)

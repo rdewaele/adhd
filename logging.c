@@ -1,6 +1,8 @@
 #include "logging.h"
 
+#include <assert.h>
 #include <inttypes.h>
+#include <math.h>
 #include <stdarg.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -65,14 +67,16 @@ void logMakeWalkArray(
 
 void logWalkArray(
 		const struct options * const options,
-		const nsec_t * const timings)
+		const nsec_t * const timings,
+		nsec_t old_avg)
 {
+	assert(options->repetitions > 0);
 	// average
-	totalnsec = 0;
+	nsec_t totalnsec = 0;
 	for (size_t i = 0; i < options->repetitions; ++i)
 		totalnsec += timings[i];
 	// XXX whole division should be OK: timings are in the millions of nsec
-	new_avg = totalnsec / options->repetitions;
+	nsec_t new_avg = totalnsec / options->repetitions;
 	if (0 == old_avg)
 		old_avg = new_avg;
 
@@ -83,10 +87,11 @@ void logWalkArray(
 		current = current > new_avg ? current - new_avg : new_avg - current;
 		totalnsec += current * current;
 	}
-	stddev = sqrt((double)(totalnsec / options->repetitions));
+	double stddev = sqrt((double)(totalnsec / options->repetitions));
 
 	// report results
-	CSV_LogTimings(csvlog, pid, array, new_avg, lround(stddev));
+	// TODO
+	//CSV_LogTimings(csvlog, pid, array, new_avg, lround(stddev));
 
 	// timing for a single run
 	verbose(options, ">>>\t%"PRINSEC" usec"
@@ -107,13 +112,12 @@ void logWalkArray(
 			" (%"PRINSEC" -> %"PRINSEC")"
 			" | ~%.2lf cycles/read"
 			" @ %.3f GHz"
-			" | final index: %"PRIWALKING"\n",
+			"\n",
 			nsread_new,
 			100 * (double)(nsread_new - nsread_old) / (double)nsread_old,
 			nsread_old, nsread_new,
 			((double)options->frequency * (double)new_avg) / (double)options->aaccesses,
-			options->frequency,
-			fidx);
+			options->frequency);
 
 	// bandwidth estimation for a single run
 	double totalbytes = (double)options->aaccesses * sizeof(walking_t);
@@ -127,11 +131,4 @@ void logWalkArray(
 			tb_old, tb_new);
 
 	verbose(options, "\n");
-
-	// inform user in time about every iteration
-	fflush(stdout);
-
-	// prepare for next test instance
-	old_avg = new_avg;
-	freeWalkArray(array);
 }
