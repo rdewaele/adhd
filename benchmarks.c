@@ -7,10 +7,6 @@
 #include <math.h>
 #include <time.h>
 
-static inline nsec_t timespecToNsec(struct timespec * t) {
-	return 1000 * 1000 * 1000 * t->tv_sec + t->tv_nsec;
-}
-
 // test for increasing cache sizes
 void walk(const struct options * const options) {
 	// logging setup

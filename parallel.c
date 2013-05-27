@@ -85,10 +85,6 @@ struct thread_context {
 	pthread_barrier_t * stop;
 };
 
-static inline nsec_t timespecToNsec(struct timespec * t) {
-	return 1000 * 1000 * 1000 * t->tv_sec + t->tv_nsec;
-}
-
 void * runWalk(void * c) {
 	const struct thread_context * const context = c;
 	const struct options * const options = context->options;
