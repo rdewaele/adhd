@@ -8,7 +8,6 @@
 #include <stdio.h>
 
 enum spawn_type {LINEAR, TREE};
-enum pattern_type {RANDOM, INCREASING, DECREASING};
 
 const char * spawn_typeToString(enum spawn_type st);
 enum spawn_type spawn_typeFromString(const char * st);

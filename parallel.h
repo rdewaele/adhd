@@ -29,3 +29,16 @@ typedef void * thread_fn(void *);
 
 // performs the 'walk' benchmark
 thread_fn runWalk;
+
+
+// context for a pthread's main function
+struct thread_context {
+	// as defined in options.h
+	const struct options * const options;
+	// ready to start hot loop
+	pthread_barrier_t * ready;
+	// begin hot loop
+	pthread_barrier_t * start;
+	// end hot loop
+	pthread_barrier_t * stop;
+};

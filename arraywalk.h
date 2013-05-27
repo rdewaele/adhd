@@ -66,6 +66,15 @@ struct timespec makeIncreasingWalkArray(walking_t len, struct walkArray ** resul
 // Encode a linear decreasing cyclic path of given length in an array.
 struct timespec makeDecreasingWalkArray(walking_t len, struct walkArray ** result);
 
+// pattern_type maps to the different kinds of walk arrays that can be created
+enum pattern_type {RANDOM, INCREASING, DECREASING};
+
+// Encode a cyclic path of given type and length in an array.
+struct timespec makeWalkArray(
+		enum pattern_type p,
+		walking_t len,
+		struct walkArray ** result);
+
 // Free the walkArray structure.
 void freeWalkArray(struct walkArray * array);
 

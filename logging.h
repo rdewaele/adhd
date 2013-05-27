@@ -24,3 +24,9 @@ void verbose(const struct options * options, const char *format, ...);
 static inline nsec_t timespecToNsec(struct timespec * t) {
 	return 1000 * 1000 * 1000 * t->tv_sec + t->tv_nsec;
 }
+
+// walkArray creation report
+void logMakeWalkArray(
+		const struct options * const options,
+		const struct walkArray * const array,
+		struct timespec * elapsed);

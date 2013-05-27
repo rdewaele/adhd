@@ -38,6 +38,7 @@ stopSpawn:
 void linearSpawn(const struct options * const options) {
 	unsigned nchildren = options->processes;
 	if(0 == spawnChildren_fork(nchildren))
+		// TODO: DEPRECATED
 		walk(options);
 	else
 		while (nchildren--)
@@ -68,6 +69,7 @@ void treeSpawn(const struct options * const options) {
 
 	} while (todo > 0);
 
+	// TODO: DEPRECATED
 	walk(options);
 
 	// wait for children
@@ -75,89 +77,26 @@ void treeSpawn(const struct options * const options) {
 		wait(NULL);
 }
 
-struct thread_context {
-	const struct options * const options;
-	// ready to start hot loop
-	pthread_barrier_t * ready;
-	// begin hot loop
-	pthread_barrier_t * start;
-	// end hot loop
-	pthread_barrier_t * stop;
-};
-
 void * runWalk(void * c) {
 	const struct thread_context * const context = c;
 	const struct options * const options = context->options;
 
-	/**
-	 * prepare data structures
-	 */
-	// time bookkeeping
 	struct timespec elapsed;
-	nsec_t totalnsec;
 
-	// creating the walking structures
-	walking_t len = 0 == options->begin ? options->step : options->begin;
 	struct walkArray * array = NULL;
-
+	walking_t len = 0 == options->begin ? options->step : options->begin;
 	for ( ; len <= options->end ; len += options->step) {
-		totalnsec = 0;
-		switch (options->pattern) {
-			case INCREASING:
-				elapsed = makeIncreasingWalkArray(len, &array);
-				break;
-			case DECREASING:
-				elapsed = makeDecreasingWalkArray(len, &array);
-				break;
-			case RANDOM:
-				elapsed = makeRandomWalkArray(len, &array);
-				break;
-		}
-		totalnsec += timespecToNsec(&elapsed);
-		assert(isFullCycle(array->array, len));
-
-		assert(array);
-		/**
-		 * user reporting
-		 */
-		const char * array_unit;
-		walking_t array_size;
-		const uint32_t kilo = 1 << 10;
-		const uint32_t mega = 1 << 20;
-		const uint32_t giga = 1 << 30;
-		if (array->size < kilo) {
-			array_unit = "B";
-			array_size = array->size;
-		}
-		else if (array->size < mega) {
-			array_unit = "KiB";
-			array_size = array->size / kilo;
-		}
-		else if (array->size < giga) {
-			array_unit = "MiB";
-			array_size = array->size / mega;
-		}
-		else {
-			array_unit = "GiB";
-			array_size = array->size / giga;
-		}
-		verbose(options,
-				"%.4lu %s (= %lu elements) randomized in %"PRINSEC" usec | %u reads:\n",
-				array_size, array_unit, array->len, totalnsec / 1000, options->aaccesses);
+		struct timespec t_wa = makeWalkArray(options->pattern, len, &array);
+		logMakeWalkArray(options, array, &t_wa);
 
 		// warmup run
 		(void)walkArray(array, options->aaccesses, NULL);
-		/**
-		 * ^ preparation can go in benchmarks as a separate function
-		 */
 
 		// indicate setup done
-		if (context->ready)
-			pthread_barrier_wait(context->ready);
+		if (context->ready) { pthread_barrier_wait(context->ready); }
 
 		// wait for 'go' signal
-		if (context->start)
-			pthread_barrier_wait(context->start);
+		if (context->start) { pthread_barrier_wait(context->start); }
 
 		// run timed code
 		// TODO: option to enable or disable thread-local timing information
@@ -175,8 +114,7 @@ void * runWalk(void * c) {
 		}
 
 		// indicate hot loop done
-		if (context->stop)
-			pthread_barrier_wait(context->stop);
+		if (context->stop) { pthread_barrier_wait(context->stop); }
 
 		freeWalkArray(array);
 
@@ -184,7 +122,6 @@ void * runWalk(void * c) {
 		if (WALKING_MAX - options->step < len)
 			break;
 	}
-
 	return NULL;
 }
 

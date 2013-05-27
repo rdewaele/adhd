@@ -67,7 +67,7 @@ void freeWalkArray(struct walkArray * array) {
 }
 
 // TODO: size may overflow if len > (walking_t_max / sizeof(walking_t))
-static void makeWalkArray(walking_t len, struct walkArray ** result) {
+static void allocWalkArray(walking_t len, struct walkArray ** result) {
 	const walking_t size = (walking_t)sizeof(walking_t) * len;
 	walking_t * const array = malloc(size);
 
@@ -80,7 +80,7 @@ static void makeWalkArray(walking_t len, struct walkArray ** result) {
 
 // Linear cycle, increasing indexes.
 struct timespec makeIncreasingWalkArray(walking_t len, struct walkArray ** result) {
-	makeWalkArray(len, result);
+	allocWalkArray(len, result);
 
 	struct timespec elapsed;
 	walking_t * const array = (*result)->array;
@@ -95,7 +95,7 @@ struct timespec makeIncreasingWalkArray(walking_t len, struct walkArray ** resul
 
 // Linear cycle, decreasing indexes.
 struct timespec makeDecreasingWalkArray(walking_t len, struct walkArray ** result) {
-	makeWalkArray(len, result);
+	allocWalkArray(len, result);
 
 	struct timespec elapsed;
 	walking_t * const array = (*result)->array;
@@ -115,7 +115,7 @@ struct timespec makeDecreasingWalkArray(walking_t len, struct walkArray ** resul
 struct timespec makeRandomWalkArray(walking_t len, struct walkArray ** result) {
 	assert(len > 0);
 
-	makeWalkArray(len, result);
+	allocWalkArray(len, result);
 
 	struct timespec elapsed;
 	walking_t * const array = (*result)->array;
@@ -144,7 +144,25 @@ struct timespec makeRandomWalkArray(walking_t len, struct walkArray ** result) {
 	return elapsed;
 }
 
-// walk the array as encoded by makeRandomWalkArray(size_t size)
+// setup an array for a walkArray run
+struct timespec makeWalkArray(enum pattern_type p, walking_t len, struct walkArray ** array) {
+	struct timespec elapsed;
+	switch (p) {
+		case INCREASING:
+			elapsed = makeIncreasingWalkArray(len, array);
+			break;
+		case DECREASING:
+			elapsed = makeDecreasingWalkArray(len, array);
+			break;
+		case RANDOM:
+			elapsed = makeRandomWalkArray(len, array);
+			break;
+	}
+	assert(isFullCycle((*array)->array, len));
+	return elapsed;
+}
+
+// walk the array as encoded by make*WalkArray(size_t size)
 walking_t walkArray(struct walkArray * array, size_t steps, struct timespec * elapsed) {
 	walking_t * a = array->array;
 	// XXX do no just make idx volatile to prevent code omission by compiler

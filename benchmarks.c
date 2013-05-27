@@ -1,6 +1,7 @@
 #include "benchmarks.h"
 
 #include "logging.h"
+#include "parallel.h"
 #include "options.h"
 
 #include <assert.h>
@@ -119,11 +120,11 @@ void walk(const struct options * const options) {
 		double tb_new = totalbytes / (double)new_avg;
 		double tb_old = totalbytes / (double)old_avg;
 		verbose(options, ">>>\t~%.3lf GiB/s"
-			 " | delta %+2.2lf%%"
-			 " (%.3lf -> %.3lf)\n",
-			 tb_new,
-			 100 * (tb_new - tb_old) / tb_old,
-			 tb_old, tb_new);
+				" | delta %+2.2lf%%"
+				" (%.3lf -> %.3lf)\n",
+				tb_new,
+				100 * (tb_new - tb_old) / tb_old,
+				tb_old, tb_new);
 
 		verbose(options, "\n");
 
