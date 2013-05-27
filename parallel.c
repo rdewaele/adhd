@@ -4,6 +4,7 @@
 #include "options.h"
 #include "logging.h"
 
+#include <assert.h>
 #include <errno.h>
 #include <pthread.h>
 #include <sys/wait.h>
@@ -15,9 +16,6 @@ pid_t spawnChildren_fork(unsigned num) {
 	pid_t pid = 0;
 	while (num--) {
 		pid = fork();
-#ifndef NDEBUG
-		fprintf(stderr, "process %lld forked\n", (long long)pid);
-#endif // NDEBUG
 		switch (pid) {
 			case -1:
 				perror("child process creation");
@@ -79,47 +77,136 @@ void treeSpawn(const struct options * const options) {
 
 struct thread_context {
 	const struct options * const options;
+	// ready to start hot loop
 	pthread_barrier_t * ready;
+	// begin hot loop
 	pthread_barrier_t * start;
+	// end hot loop
+	pthread_barrier_t * stop;
 };
+
+static inline nsec_t timespecToNsec(struct timespec * t) {
+	return 1000 * 1000 * 1000 * t->tv_sec + t->tv_nsec;
+}
 
 void * runWalk(void * c) {
 	const struct thread_context * const context = c;
 	const struct options * const options = context->options;
 
-	// TODO begin might 0
-	//walking_t array_len = options->begin;
-	walking_t array_len = options->step;
-	struct walkArray * array;
-	makeIncreasingWalkArray(array_len, &array);
+	/**
+	 * prepare data structures
+	 */
+	// time bookkeeping
+	struct timespec elapsed;
+	nsec_t totalnsec;
 
-	// setup done
-	pthread_barrier_wait(context->ready);
+	// creating the walking structures
+	walking_t len = 0 == options->begin ? options->step : options->begin;
+	struct walkArray * array = NULL;
 
-	// timer started
-	pthread_barrier_wait(context->start);
+	for ( ; len <= options->end ; len += options->step) {
+		totalnsec = 0;
+		switch (options->pattern) {
+			case INCREASING:
+				elapsed = makeIncreasingWalkArray(len, &array);
+				break;
+			case DECREASING:
+				elapsed = makeDecreasingWalkArray(len, &array);
+				break;
+			case RANDOM:
+				elapsed = makeRandomWalkArray(len, &array);
+				break;
+		}
+		totalnsec += timespecToNsec(&elapsed);
+		assert(isFullCycle(array->array, len));
 
-	walkArray(array, options->aaccesses, NULL);
+		assert(array);
+		/**
+		 * user reporting
+		 */
+		const char * array_unit;
+		walking_t array_size;
+		const uint32_t kilo = 1 << 10;
+		const uint32_t mega = 1 << 20;
+		const uint32_t giga = 1 << 30;
+		if (array->size < kilo) {
+			array_unit = "B";
+			array_size = array->size;
+		}
+		else if (array->size < mega) {
+			array_unit = "KiB";
+			array_size = array->size / kilo;
+		}
+		else if (array->size < giga) {
+			array_unit = "MiB";
+			array_size = array->size / mega;
+		}
+		else {
+			array_unit = "GiB";
+			array_size = array->size / giga;
+		}
+		verbose(options,
+				"%.4lu %s (= %lu elements) randomized in %"PRINSEC" usec | %u reads:\n",
+				array_size, array_unit, array->len, totalnsec / 1000, options->aaccesses);
+
+		// warmup run
+		(void)walkArray(array, options->aaccesses, NULL);
+		/**
+		 * ^ preparation can go in benchmarks as a separate function
+		 */
+
+		// indicate setup done
+		if (context->ready)
+			pthread_barrier_wait(context->ready);
+
+		// wait for 'go' signal
+		if (context->start)
+			pthread_barrier_wait(context->start);
+
+		// run timed code
+		// TODO: option to enable or disable thread-local timing information
+		if (/* options->thread_timing */ false) {
+			//nsec_t timings[options->repetitions];
+			for (size_t i = 0; i < options->repetitions; ++i) {
+				walkArray(array, options->aaccesses, &elapsed);
+				//timings[i] = timespecToNsec(&elapsed);
+			}
+		}
+		else {
+			for (size_t i = 0; i < options->repetitions; ++i) {
+				walkArray(array, options->aaccesses, NULL);
+			}
+		}
+
+		// indicate hot loop done
+		if (context->stop)
+			pthread_barrier_wait(context->stop);
+
+		freeWalkArray(array);
+
+		// overflow could cause infinite loop
+		if (WALKING_MAX - options->step < len)
+			break;
+	}
+
 	return NULL;
-}
-
-static inline nsec_t timespecToNsec(struct timespec * t) {
-	return 1000 * 1000 * 1000 * t->tv_sec + t->tv_nsec;
 }
 
 // TODO: error correctness
 void spawnThreads(const struct options * const options) {
 	unsigned num = options->threads;
 	pthread_t allthreads[num];
-	pthread_barrier_t syncready;
-	pthread_barrier_t syncstart;
-	// let all threads wait until parent is ready to start timing
+	pthread_barrier_t syncready, syncstart, syncstop;
+
 	pthread_barrier_init(&syncready, NULL, num + 1);
 	pthread_barrier_init(&syncstart, NULL, num + 1);
+	pthread_barrier_init(&syncstop, NULL, num + 1);
+
 	struct thread_context optarg = {
 		options,
 		&syncready,
-		&syncstart
+		&syncstart,
+		&syncstop
 	};
 
 	// start threads
@@ -128,9 +215,6 @@ void spawnThreads(const struct options * const options) {
 		int rc = pthread_create(thread++, NULL, runWalk, &optarg);
 		switch (rc) {
 			case 0:
-#ifndef NDEBUG
-				printf("Thread %d created.\n", i + 1);
-#endif
 				continue;
 				break;
 			case EAGAIN:
@@ -142,29 +226,44 @@ void spawnThreads(const struct options * const options) {
 		}
 	}
 
-	struct timespec start, stop, elapsed;
+	// time each of the runs of all threads
+	walking_t iterations = (options->end - options->begin) / options->step;
+	while (iterations--) {
+		struct timespec start, stop, elapsed;
 
-	pthread_barrier_wait(&syncready);
-	clock_gettime(CLOCK_MONOTONIC, &start);
-	pthread_barrier_wait(&syncstart);
+		pthread_barrier_wait(&syncready);
+		pthread_barrier_destroy(&syncready);
+		pthread_barrier_init(&syncready, NULL, num + 1);
+
+		clock_gettime(CLOCK_MONOTONIC, &start);
+
+		pthread_barrier_wait(&syncstart);
+		pthread_barrier_destroy(&syncstart);
+		pthread_barrier_init(&syncstart, NULL, num + 1);
+
+		pthread_barrier_wait(&syncstop);
+		clock_gettime(CLOCK_MONOTONIC, &stop);
+		pthread_barrier_destroy(&syncstop);
+		pthread_barrier_init(&syncstop, NULL, num + 1);
+
+		elapsed.tv_sec = stop.tv_sec - start.tv_sec;
+		elapsed.tv_nsec = stop.tv_nsec - start.tv_nsec;
+
+		double totalbytes = num * options->repetitions * (double)options->aaccesses * sizeof(walking_t);
+		double tb_new = totalbytes / (double)timespecToNsec(&elapsed);
+
+		verbose(options,
+				"Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
+				timespecToNsec(&elapsed),
+				timespecToNsec(&elapsed) / (1000 * 1000));
+
+		verbose(options,
+				"Bandwidth: ~%.3lf GiB/s\n", tb_new);
+	}
 
 	// wait for threads to finish
 	for (unsigned i = 0; i < num; ++i)
 		pthread_join(allthreads[i], NULL);
-
-	clock_gettime(CLOCK_MONOTONIC, &stop);
-	elapsed.tv_sec = stop.tv_sec - start.tv_sec;
-	elapsed.tv_nsec = stop.tv_nsec - start.tv_nsec;
-
-	double totalbytes = num * (double)options->aaccesses * sizeof(walking_t);
-	double tb_new = totalbytes / (double)timespecToNsec(&elapsed);
-
-	printf("Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
-			timespecToNsec(&elapsed),
-			timespecToNsec(&elapsed) / (1000 * 1000));
-
-	printf("Bandwidth: ~%.3lf GiB/s\n", tb_new);
-
 }
 
 void spawnProcesses(const struct options * const options) {
