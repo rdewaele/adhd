@@ -30,3 +30,8 @@ void logMakeWalkArray(
 		const struct options * const options,
 		const struct walkArray * const array,
 		struct timespec * elapsed);
+
+// walkArray performance report
+void logWalkArray(
+		const struct options * const options,
+		const nsec_t * const timings);
