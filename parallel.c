@@ -84,8 +84,11 @@ void * runWalk(void * c) {
 	struct timespec elapsed;
 
 	struct walkArray * array = NULL;
-	walking_t len = 0 == options->begin ? options->step : options->begin;
-	for ( ; len <= options->end ; len += options->step) {
+#define WALKARRAY_FOREACH_LENGTH(OPTIONS,LENGTH) \
+	LENGTH = 0 == OPTIONS->begin ? OPTIONS->step : OPTIONS->begin; \
+	for ( ; LENGTH <= OPTIONS->end ; LENGTH += OPTIONS->step)
+	walking_t len;
+	WALKARRAY_FOREACH_LENGTH(options, len) {
 		struct timespec t_wa = makeWalkArray(options->pattern, len, &array);
 		logMakeWalkArray(options, array, &t_wa);
 
@@ -169,8 +172,8 @@ void spawnThreads(const struct options * const options) {
 	}
 
 	// time each of the runs of all threads
-	walking_t iterations = (options->end - options->begin) / options->step;
-	while (iterations--) {
+	walking_t len;
+	WALKARRAY_FOREACH_LENGTH(options, len) {
 		struct timespec start, stop, elapsed;
 
 		pthread_barrier_wait(&syncready);
