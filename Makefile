@@ -22,7 +22,9 @@ CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -W -Wall -Wextra -pedantic \
 LDFLAGS += -lm -lrt \
 					 $(shell pkg-config --libs $(PKGCONFIG_LIBS))
 
-SOURCES = main.c arraywalk.c util.c logging.c options.c parallel.c
+SOURCES = main.c logging.c options.c parallel.c \
+					benchmarks/util.c \
+					benchmarks/arraywalk.c
 VALGRIND_CONF = vgconfig.cfg
 OBJECTS = $(SOURCES:.c=.o)
 

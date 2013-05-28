@@ -1,6 +1,6 @@
 #pragma once
 
-#include "arraywalk.h"
+#include "benchmarks.h"
 
 #include <libconfig.h>
 #include <limits.h>
