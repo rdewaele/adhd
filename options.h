@@ -15,6 +15,23 @@ enum spawn_type spawn_typeFromString(const char * st);
 const char * pattern_typeToString(enum pattern_type pt);
 enum pattern_type pattern_typeFromString(const char * pt);
 
+struct options_generic {
+	// process Creation
+	enum spawn_type create;
+	// cpu frequency to use in memory access cycles calculation
+	double frequency;
+	// CSV logging enable/disable
+	bool logging;
+	// base filename for csv files (pid will be appended)
+	char csvlogname[NAME_MAX];
+	// number of processes to run in parallel
+	unsigned processes;
+	// silent mode
+	bool silent;
+	// number of threads to run per process
+	unsigned threads;
+};
+
 struct options_walkarray {
 	// amount of array accesses to perform (improves bench accuracy)
 	unsigned aaccesses;
@@ -39,30 +56,18 @@ struct options_streamarray {
 	walking_t step;
 };
 
-struct options_generic {
-	// process Creation
-	enum spawn_type create;
-	// cpu frequency to use in memory access cycles calculation
-	double frequency;
-	// CSV logging enable/disable
-	bool logging;
-	// base filename for csv files (pid will be appended)
-	char csvlogname[NAME_MAX];
-	// number of processes to run in parallel
-	unsigned processes;
-	// silent mode
-	bool silent;
-	// number of threads to run per process
-	unsigned threads;
-};
-
 struct options {
+	struct options_generic generic;
 	struct options_walkarray walkArray;
 	struct options_streamarray streamArray;
-	struct options_generic generic;
 };
 
 void options_parse(int argc, char * argv[], struct options * options);
+
+void options_generic_print(
+		FILE * out,
+		const char * prefix,
+		const struct options_generic * gn_opt);
 
 void options_walkarray_print(
 		FILE * out,
@@ -73,11 +78,6 @@ void options_streamarray_print(
 		FILE * out,
 		const char * prefix,
 		const struct options_streamarray * sa_opt);
-
-void options_generic_print(
-		FILE * out,
-		const char * prefix,
-		const struct options_generic * gn_opt);
 
 void options_print(
 		FILE * out,

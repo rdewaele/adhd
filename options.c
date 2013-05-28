@@ -37,6 +37,15 @@ static const char * OPTSTR = "h?c:gi";
 #define STEP_INIT 1 << 4
 #endif
 
+static const char FLD_GENERIC_GROUP[] = "generic";
+static const char FLD_GENERIC_GPU_FREQUENCY[] = "CPU_frequency";
+static const char FLD_GENERIC_LOGGING[] = "logging";
+static const char FLD_GENERIC_LOGFILE[] = "logfile";
+static const char FLD_GENERIC_SPAWN[] = "spawn";
+static const char FLD_GENERIC_PROCESSES[] = "processes";
+static const char FLD_GENERIC_SILENT[] = "silent";
+static const char FLD_GENERIC_THREADS[] = "threads";
+
 static const char FLD_WALKARRAY_GROUP[] = "walkarray";
 static const char FLD_WALKARRAY_ACCESSES[] = "accesses";
 static const char FLD_WALKARRAY_REPEAT[] = "repeat";
@@ -51,15 +60,6 @@ static const char FLD_STREAMARRAY_BEGINLENGTH[] = "beginlength";
 static const char FLD_STREAMARRAY_ENDLENGTH[] = "endlength";
 static const char FLD_STREAMARRAY_INCREMENT[] = "increment";
 static const char FLD_STREAMARRAY_SCALING[] = "scaling";
-
-static const char FLD_GENERIC_GROUP[] = "generic";
-static const char FLD_GENERIC_GPU_FREQUENCY[] = "CPU_frequency";
-static const char FLD_GENERIC_LOGGING[] = "logging";
-static const char FLD_GENERIC_LOGFILE[] = "logfile";
-static const char FLD_GENERIC_SPAWN[] = "spawn";
-static const char FLD_GENERIC_PROCESSES[] = "processes";
-static const char FLD_GENERIC_SILENT[] = "silent";
-static const char FLD_GENERIC_THREADS[] = "threads";
 
 // load the default configuration in cfg
 static void set_default_config(config_t * cfg) {
@@ -81,6 +81,44 @@ static void set_default_config(config_t * cfg) {
 	config_setting_t *setting;
 	config_setting_t *root;
 	root = config_root_setting(cfg);
+
+	// generic group
+	{
+		config_setting_t *generic =
+			config_setting_add(root, FLD_GENERIC_GROUP, CONFIG_TYPE_GROUP);
+
+		// CPU frequency to calculate cycle estimate
+		// TODO: use actual cycle counter in the CPU
+		// (this is a feature with a design impact, as SMP complicates matters ... :))
+		setting = config_setting_add(generic, FLD_GENERIC_GPU_FREQUENCY, CONFIG_TYPE_FLOAT);
+		config_setting_set_float(setting, FREQUENCY);
+
+		// logging enabled?
+		setting = config_setting_add(generic, FLD_GENERIC_LOGGING, CONFIG_TYPE_BOOL);
+		config_setting_set_bool(setting, LOGGING);
+
+		// base filename to log process timings to
+		setting = config_setting_add(generic, FLD_GENERIC_LOGFILE, CONFIG_TYPE_STRING);
+		config_setting_set_string(setting, LOGFILE);
+
+		// process spawn method
+		setting = config_setting_add(generic, FLD_GENERIC_SPAWN, CONFIG_TYPE_STRING);
+		config_setting_set_string(setting, SPAWN);
+
+		// number of processes to run
+		// TODO: just like arrays we could have min/max and a linear or exponential increment
+		setting = config_setting_add(generic, FLD_GENERIC_PROCESSES, CONFIG_TYPE_INT64);
+		config_setting_set_int64(setting, PROCESSES);
+
+		// number of threads per process to run
+		// TODO: just like arrays we could have min/max and a linear or exponential increment
+		setting = config_setting_add(generic, FLD_GENERIC_THREADS, CONFIG_TYPE_INT64);
+		config_setting_set_int64(setting, THREADS);
+
+		// silent mode
+		setting = config_setting_add(generic, FLD_GENERIC_SILENT, CONFIG_TYPE_BOOL);
+		config_setting_set_bool(setting, SILENT);
+	}
 
 	// walking array group
 	{
@@ -141,44 +179,6 @@ static void set_default_config(config_t * cfg) {
 		setting = config_setting_add(array, FLD_STREAMARRAY_SCALING, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, SCALING);
 	}
-
-	// generic group
-	{
-		config_setting_t *generic =
-			config_setting_add(root, FLD_GENERIC_GROUP, CONFIG_TYPE_GROUP);
-
-		// CPU frequency to calculate cycle estimate
-		// TODO: use actual cycle counter in the CPU
-		// (this is a feature with a design impact, as SMP complicates matters ... :))
-		setting = config_setting_add(generic, FLD_GENERIC_GPU_FREQUENCY, CONFIG_TYPE_FLOAT);
-		config_setting_set_float(setting, FREQUENCY);
-
-		// logging enabled?
-		setting = config_setting_add(generic, FLD_GENERIC_LOGGING, CONFIG_TYPE_BOOL);
-		config_setting_set_bool(setting, LOGGING);
-
-		// base filename to log process timings to
-		setting = config_setting_add(generic, FLD_GENERIC_LOGFILE, CONFIG_TYPE_STRING);
-		config_setting_set_string(setting, LOGFILE);
-
-		// process spawn method
-		setting = config_setting_add(generic, FLD_GENERIC_SPAWN, CONFIG_TYPE_STRING);
-		config_setting_set_string(setting, SPAWN);
-
-		// number of processes to run
-		// TODO: just like arrays we could have min/max and a linear or exponential increment
-		setting = config_setting_add(generic, FLD_GENERIC_PROCESSES, CONFIG_TYPE_INT64);
-		config_setting_set_int64(setting, PROCESSES);
-
-		// number of threads per process to run
-		// TODO: just like arrays we could have min/max and a linear or exponential increment
-		setting = config_setting_add(generic, FLD_GENERIC_THREADS, CONFIG_TYPE_INT64);
-		config_setting_set_int64(setting, THREADS);
-
-		// silent mode
-		setting = config_setting_add(generic, FLD_GENERIC_SILENT, CONFIG_TYPE_BOOL);
-		config_setting_set_bool(setting, SILENT);
-	}
 }
 
 static void c2o_strncpy(
@@ -194,6 +194,37 @@ static void c2o_strncpy(
 // TODO: stop abusing NAME_MAX ;-)
 // TODO: proper bounds checking for all types
 static void config2options(const config_t * config, struct options * options) {
+
+	// generic group
+	struct options_generic gn_opt;
+	{
+		double frequency;
+		int logging, silent;
+		char logfile[NAME_MAX], create[NAME_MAX];
+		long long processes, threads;
+
+		config_setting_t * generic = config_lookup(config, FLD_GENERIC_GROUP);
+		config_setting_lookup_float(generic, FLD_GENERIC_GPU_FREQUENCY, &frequency);
+		config_setting_lookup_bool(generic, FLD_GENERIC_LOGGING, &logging);
+		c2o_strncpy(logfile,
+				config_setting_get_member(generic, FLD_GENERIC_LOGFILE), NAME_MAX);
+		c2o_strncpy(create,
+				config_setting_get_member(generic, FLD_GENERIC_SPAWN), NAME_MAX);
+		config_setting_lookup_int64(generic, FLD_GENERIC_PROCESSES, &processes);
+		config_setting_lookup_int64(generic, FLD_GENERIC_THREADS, &threads);
+		config_setting_lookup_bool(generic, FLD_GENERIC_SILENT, &silent);
+
+		gn_opt = (struct options_generic) {
+			spawn_typeFromString(create),
+				frequency,
+				logging,
+				"", // XXX strncpy ! (log filename)
+				(unsigned)processes,
+				silent,
+				(unsigned)threads
+		};
+		strncpy(gn_opt.csvlogname, logfile, NAME_MAX);
+	}
 
 	// walking array group
 	struct options_walkarray wa_opt;
@@ -242,40 +273,9 @@ static void config2options(const config_t * config, struct options * options) {
 		};
 	}
 
-	// generic group
-	struct options_generic gn_opt;
-	{
-		double frequency;
-		int logging, silent;
-		char logfile[NAME_MAX], create[NAME_MAX];
-		long long processes, threads;
-
-		config_setting_t * generic = config_lookup(config, FLD_GENERIC_GROUP);
-		config_setting_lookup_float(generic, FLD_GENERIC_GPU_FREQUENCY, &frequency);
-		config_setting_lookup_bool(generic, FLD_GENERIC_LOGGING, &logging);
-		c2o_strncpy(logfile,
-				config_setting_get_member(generic, FLD_GENERIC_LOGFILE), NAME_MAX);
-		c2o_strncpy(create,
-				config_setting_get_member(generic, FLD_GENERIC_SPAWN), NAME_MAX);
-		config_setting_lookup_int64(generic, FLD_GENERIC_PROCESSES, &processes);
-		config_setting_lookup_int64(generic, FLD_GENERIC_THREADS, &threads);
-		config_setting_lookup_bool(generic, FLD_GENERIC_SILENT, &silent);
-
-		gn_opt = (struct options_generic) {
-			spawn_typeFromString(create),
-				frequency,
-				logging,
-				"", // XXX strncpy ! (log filename)
-				(unsigned)processes,
-				silent,
-				(unsigned)threads
-		};
-		strncpy(gn_opt.csvlogname, logfile, NAME_MAX);
-	}
-
+	options->generic = gn_opt;
 	options->walkArray = wa_opt;
 	options->streamArray = sa_opt;
-	options->generic = gn_opt;
 }
 
 static void options_help(const char * name) {
@@ -285,6 +285,30 @@ static void options_help(const char * name) {
 			"\t-g        print default configuration file to stdout and quit\n"
 			"\t-i        print run configuration at program startup\n",
 			name);
+}
+
+void options_generic_print(
+		FILE * out,
+		const char * prefix,
+		const struct options_generic * gn_opt)
+{
+	fprintf(out,
+			"%sprocess creation = %s;\n"
+			"%sCPU frequency = %lf;\n"
+			"%sCSV logging = %s;\n"
+			"%sbasename for CSV logfiles = %s;\n"
+			"%sprocesses = %u;\n"
+			"%sthreads = %u;\n"
+			"%ssilent mode = %s;\n"
+			,
+			prefix, spawn_typeToString(gn_opt->create),
+			prefix, gn_opt->frequency,
+			prefix, bool2onoff(gn_opt->logging),
+			prefix, gn_opt->csvlogname,
+			prefix, gn_opt->processes,
+			prefix, gn_opt->threads,
+			prefix, bool2onoff(gn_opt->silent)
+			);
 }
 
 void options_walkarray_print(
@@ -322,30 +346,6 @@ void options_streamarray_print(
 			prefix, sa_opt->begin,
 			prefix, sa_opt->end,
 			prefix, sa_opt->step
-			);
-}
-
-void options_generic_print(
-		FILE * out,
-		const char * prefix,
-		const struct options_generic * gn_opt)
-{
-	fprintf(out,
-			"%sprocess creation = %s;\n"
-			"%sCPU frequency = %lf;\n"
-			"%sCSV logging = %s;\n"
-			"%sbasename for CSV logfiles = %s;\n"
-			"%sprocesses = %u;\n"
-			"%sthreads = %u;\n"
-			"%ssilent mode = %s;\n"
-			,
-			prefix, spawn_typeToString(gn_opt->create),
-			prefix, gn_opt->frequency,
-			prefix, bool2onoff(gn_opt->logging),
-			prefix, gn_opt->csvlogname,
-			prefix, gn_opt->processes,
-			prefix, gn_opt->threads,
-			prefix, bool2onoff(gn_opt->silent)
 			);
 }
 
