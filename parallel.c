@@ -35,7 +35,7 @@ stopSpawn:
 
 // create the desired amount of children all from the same parent
 void linearSpawn(const struct options * const options) {
-	unsigned nchildren = options->processes;
+	unsigned nchildren = options->generic.processes;
 	if(0 == spawnChildren_fork(nchildren))
 		spawnThreads(options);
 	else
@@ -47,7 +47,7 @@ void linearSpawn(const struct options * const options) {
 // XXX assumes options.processes > 1
 void treeSpawn(const struct options * const options) {
 	// TODO: maybe introduce support for configurable branching factors
-	unsigned todo = options->processes - 1; // initial process will also calculate
+	unsigned todo = options->generic.processes - 1; // initial process will also calculate
 	unsigned nchildren = 0;
 	do {
 		switch ((nchildren = todo % 2)) {
@@ -77,20 +77,21 @@ void treeSpawn(const struct options * const options) {
 void * runWalk(void * c) {
 	const struct thread_context * const context = c;
 	const struct options * const options = context->options;
+	const struct options_walkarray * const wa_opt = &(options->walkArray);
 
 	struct timespec elapsed;
 
 	struct walkArray * array = NULL;
-#define WALKARRAY_FOREACH_LENGTH(OPTIONS,LENGTH) \
-	LENGTH = 0 == OPTIONS->begin ? OPTIONS->step : OPTIONS->begin; \
-	for ( ; LENGTH <= OPTIONS->end ; LENGTH += OPTIONS->step)
+#define WALKARRAY_FOREACH_LENGTH(OPT_WA,LENGTH) \
+	LENGTH = 0 == OPT_WA->begin ? OPT_WA->step : OPT_WA->begin; \
+	for ( ; LENGTH <= OPT_WA->end ; LENGTH += OPT_WA->step)
 	walking_t len;
-	WALKARRAY_FOREACH_LENGTH(options, len) {
-		struct timespec t_wa = makeWalkArray(options->pattern, len, &array);
+	WALKARRAY_FOREACH_LENGTH(wa_opt, len) {
+		struct timespec t_wa = makeWalkArray(wa_opt->pattern, len, &array);
 		logMakeWalkArray(options, array, &t_wa);
 
 		// warmup run
-		(void)walkArray(array, options->aaccesses, NULL);
+		(void)walkArray(array, wa_opt->aaccesses, NULL);
 
 		// indicate setup done
 		if (context->ready) { pthread_barrier_wait(context->ready); }
@@ -100,16 +101,16 @@ void * runWalk(void * c) {
 
 		// run timed code
 		// TODO: option to enable or disable thread-local timing information
-		nsec_t timings[options->repetitions];
+		nsec_t timings[wa_opt->repetitions];
 		if (/* options->thread_timing */ true) {
-			for (size_t i = 0; i < options->repetitions; ++i) {
-				walkArray(array, options->aaccesses, &elapsed);
+			for (size_t i = 0; i < wa_opt->repetitions; ++i) {
+				walkArray(array, wa_opt->aaccesses, &elapsed);
 				timings[i] = timespecToNsec(&elapsed);
 			}
 		}
 		else {
-			for (size_t i = 0; i < options->repetitions; ++i) {
-				walkArray(array, options->aaccesses, NULL);
+			for (size_t i = 0; i < wa_opt->repetitions; ++i) {
+				walkArray(array, wa_opt->aaccesses, NULL);
 			}
 		}
 
@@ -123,7 +124,7 @@ void * runWalk(void * c) {
 			logWalkArray(options, timings, 0);
 
 		// overflow could cause infinite loop
-		if (WALKING_MAX - options->step < len)
+		if (WALKING_MAX - wa_opt->step < len)
 			break;
 	}
 	return NULL;
@@ -131,7 +132,10 @@ void * runWalk(void * c) {
 
 // TODO: error correctness
 void spawnThreads(const struct options * const options) {
-	unsigned num = options->threads;
+	const struct options_walkarray * const wa_opt = &(options->walkArray);
+	const struct options_generic * const gn_opt = &(options->generic);
+
+	unsigned num = gn_opt->threads;
 	pthread_t allthreads[num];
 	pthread_barrier_t syncready, syncstart, syncstop;
 
@@ -170,7 +174,7 @@ void spawnThreads(const struct options * const options) {
 
 	// time each of the runs of all threads
 	walking_t len;
-	WALKARRAY_FOREACH_LENGTH(options, len) {
+	WALKARRAY_FOREACH_LENGTH(wa_opt, len) {
 		struct timespec start, stop, elapsed;
 
 		pthread_barrier_wait(&syncready);
@@ -191,7 +195,7 @@ void spawnThreads(const struct options * const options) {
 		elapsed.tv_sec = stop.tv_sec - start.tv_sec;
 		elapsed.tv_nsec = stop.tv_nsec - start.tv_nsec;
 
-		double totalbytes = num * options->repetitions * (double)options->aaccesses * sizeof(walking_t);
+		double totalbytes = num * wa_opt->repetitions * (double)wa_opt->aaccesses * sizeof(walking_t);
 		double tb_new = totalbytes / (double)timespecToNsec(&elapsed);
 
 		verbose(options,
@@ -209,14 +213,16 @@ void spawnThreads(const struct options * const options) {
 }
 
 void spawnProcesses(const struct options * const options) {
-	switch (options->processes) {
+	const struct options_generic * const gn_opt = &(options->generic);
+
+	switch (gn_opt->processes) {
 		case 0:
 			return;
 		case 1:
 			spawnThreads(options);
 			return;
 		default:
-			switch (options->create) {
+			switch (gn_opt->create) {
 				case TREE:
 					treeSpawn(options);
 					break;

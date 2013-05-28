@@ -1,4 +1,5 @@
 #include "options.h"
+#include "logging.h"
 
 #include <libconfig.h>
 #include <limits.h>
@@ -36,21 +37,29 @@ static const char * OPTSTR = "h?c:gi";
 #define STEP_INIT 1 << 4
 #endif
 
-static const char FLD_ARRAY_GROUP[] = "array";
-static const char FLD_ARRAY_ACCESSES[] = "accesses";
-static const char FLD_ARRAY_REPEAT[] = "repeat";
-static const char FLD_ARRAY_BEGINLENGTH[] = "beginlength";
-static const char FLD_ARRAY_ENDLENGTH[] = "endlength";
-static const char FLD_ARRAY_INCREMENT[] = "increment"; 
-static const char FLD_ARRAY_SCALING[] = "scaling";
-static const char FLD_ARRAY_PATTERN[] = "pattern";
-static const char FLD_CPU_FREQUENCY[] = "CPU_frequency";
-static const char FLD_LOGGING[] = "logging";
-static const char FLD_LOGFILE[] = "logfile";
-static const char FLD_SPAWN[] = "spawn";
-static const char FLD_PROCESSES[] = "processes";
-static const char FLD_SILENT[] = "silent";
-static const char FLD_THREADS[] = "threads";
+static const char FLD_WALKARRAY_GROUP[] = "walkarray";
+static const char FLD_WALKARRAY_ACCESSES[] = "accesses";
+static const char FLD_WALKARRAY_REPEAT[] = "repeat";
+static const char FLD_WALKARRAY_BEGINLENGTH[] = "beginlength";
+static const char FLD_WALKARRAY_ENDLENGTH[] = "endlength";
+static const char FLD_WALKARRAY_INCREMENT[] = "increment";
+static const char FLD_WALKARRAY_SCALING[] = "scaling";
+static const char FLD_WALKARRAY_PATTERN[] = "pattern";
+
+static const char FLD_STREAMARRAY_GROUP[] = "streamarray";
+static const char FLD_STREAMARRAY_BEGINLENGTH[] = "beginlength";
+static const char FLD_STREAMARRAY_ENDLENGTH[] = "endlength";
+static const char FLD_STREAMARRAY_INCREMENT[] = "increment";
+static const char FLD_STREAMARRAY_SCALING[] = "scaling";
+
+static const char FLD_GENERIC_GROUP[] = "generic";
+static const char FLD_GENERIC_GPU_FREQUENCY[] = "CPU_frequency";
+static const char FLD_GENERIC_LOGGING[] = "logging";
+static const char FLD_GENERIC_LOGFILE[] = "logfile";
+static const char FLD_GENERIC_SPAWN[] = "spawn";
+static const char FLD_GENERIC_PROCESSES[] = "processes";
+static const char FLD_GENERIC_SILENT[] = "silent";
+static const char FLD_GENERIC_THREADS[] = "threads";
 
 // load the default configuration in cfg
 static void set_default_config(config_t * cfg) {
@@ -73,75 +82,101 @@ static void set_default_config(config_t * cfg) {
 	config_setting_t *root;
 	root = config_root_setting(cfg);
 
-	// array group
+	// walking array group
 	{
 		config_setting_t *array =
-			config_setting_add(root, FLD_ARRAY_GROUP, CONFIG_TYPE_GROUP);
+			config_setting_add(root, FLD_WALKARRAY_GROUP, CONFIG_TYPE_GROUP);
 
 		// array accesses
-		setting = config_setting_add(array, FLD_ARRAY_ACCESSES, CONFIG_TYPE_INT64);
+		setting = config_setting_add(array, FLD_WALKARRAY_ACCESSES, CONFIG_TYPE_INT64);
 		config_setting_set_int64(setting, AACCESSES);
 
 		// repetitions of a single test, to be able to calculate an average
 		// and a standard deviation, indicating run precision
-		setting = config_setting_add(array, FLD_ARRAY_REPEAT, CONFIG_TYPE_INT64);
+		setting = config_setting_add(array, FLD_WALKARRAY_REPEAT, CONFIG_TYPE_INT64);
 		config_setting_set_int64(setting, REPETITIONS);
 
 		// initial array size
-		setting = config_setting_add(array, FLD_ARRAY_BEGINLENGTH, CONFIG_TYPE_INT64);
+		setting = config_setting_add(array, FLD_WALKARRAY_BEGINLENGTH, CONFIG_TYPE_INT64);
 		config_setting_set_int64(setting, BEGIN);
 
 		// maximal array size
-		setting = config_setting_add(array, FLD_ARRAY_ENDLENGTH, CONFIG_TYPE_INT64);
+		setting = config_setting_add(array, FLD_WALKARRAY_ENDLENGTH, CONFIG_TYPE_INT64);
 		config_setting_set_int64(setting, END);
 
 		// increment factor
-		setting = config_setting_add(array, FLD_ARRAY_INCREMENT, CONFIG_TYPE_INT64);
+		setting = config_setting_add(array, FLD_WALKARRAY_INCREMENT, CONFIG_TYPE_INT64);
 		config_setting_set_int64(setting, STEP);
 
 		// increment type
 		// (linear adds the increment, exponential multiplies the previous length)
-		setting = config_setting_add(array, FLD_ARRAY_SCALING, CONFIG_TYPE_STRING);
+		setting = config_setting_add(array, FLD_WALKARRAY_SCALING, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, SCALING);
 
 		// walking pattern
 		// (sequentially increasing/decreasing or random)
-		setting = config_setting_add(array, FLD_ARRAY_PATTERN, CONFIG_TYPE_STRING);
+		setting = config_setting_add(array, FLD_WALKARRAY_PATTERN, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, PATTERN);
 	}
 
-	// miscellaneous
+	// streaming array group
 	{
+		config_setting_t *array =
+			config_setting_add(root, FLD_STREAMARRAY_GROUP, CONFIG_TYPE_GROUP);
+
+		// initial array size
+		setting = config_setting_add(array, FLD_STREAMARRAY_BEGINLENGTH, CONFIG_TYPE_INT64);
+		config_setting_set_int64(setting, BEGIN);
+
+		// maximal array size
+		setting = config_setting_add(array, FLD_STREAMARRAY_ENDLENGTH, CONFIG_TYPE_INT64);
+		config_setting_set_int64(setting, END);
+
+		// increment factor
+		setting = config_setting_add(array, FLD_STREAMARRAY_INCREMENT, CONFIG_TYPE_INT64);
+		config_setting_set_int64(setting, STEP);
+
+		// increment type
+		// (linear adds the increment, exponential multiplies the previous length)
+		setting = config_setting_add(array, FLD_STREAMARRAY_SCALING, CONFIG_TYPE_STRING);
+		config_setting_set_string(setting, SCALING);
+	}
+
+	// generic group
+	{
+		config_setting_t *generic =
+			config_setting_add(root, FLD_GENERIC_GROUP, CONFIG_TYPE_GROUP);
+
 		// CPU frequency to calculate cycle estimate
 		// TODO: use actual cycle counter in the CPU
 		// (this is a feature with a design impact, as SMP complicates matters ... :))
-		setting = config_setting_add(root, FLD_CPU_FREQUENCY, CONFIG_TYPE_FLOAT);
+		setting = config_setting_add(generic, FLD_GENERIC_GPU_FREQUENCY, CONFIG_TYPE_FLOAT);
 		config_setting_set_float(setting, FREQUENCY);
 
 		// logging enabled?
-		setting = config_setting_add(root, FLD_LOGGING, CONFIG_TYPE_BOOL);
+		setting = config_setting_add(generic, FLD_GENERIC_LOGGING, CONFIG_TYPE_BOOL);
 		config_setting_set_bool(setting, LOGGING);
 
 		// base filename to log process timings to
-		setting = config_setting_add(root, FLD_LOGFILE, CONFIG_TYPE_STRING);
+		setting = config_setting_add(generic, FLD_GENERIC_LOGFILE, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, LOGFILE);
 
 		// process spawn method
-		setting = config_setting_add(root, FLD_SPAWN, CONFIG_TYPE_STRING);
+		setting = config_setting_add(generic, FLD_GENERIC_SPAWN, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, SPAWN);
 
 		// number of processes to run
 		// TODO: just like arrays we could have min/max and a linear or exponential increment
-		setting = config_setting_add(root, FLD_PROCESSES, CONFIG_TYPE_INT64);
+		setting = config_setting_add(generic, FLD_GENERIC_PROCESSES, CONFIG_TYPE_INT64);
 		config_setting_set_int64(setting, PROCESSES);
 
 		// number of threads per process to run
 		// TODO: just like arrays we could have min/max and a linear or exponential increment
-		setting = config_setting_add(root, FLD_THREADS, CONFIG_TYPE_INT64);
+		setting = config_setting_add(generic, FLD_GENERIC_THREADS, CONFIG_TYPE_INT64);
 		config_setting_set_int64(setting, THREADS);
 
 		// silent mode
-		setting = config_setting_add(root, FLD_SILENT, CONFIG_TYPE_BOOL);
+		setting = config_setting_add(generic, FLD_GENERIC_SILENT, CONFIG_TYPE_BOOL);
 		config_setting_set_bool(setting, SILENT);
 	}
 }
@@ -159,63 +194,88 @@ static void c2o_strncpy(
 // TODO: stop abusing NAME_MAX ;-)
 // TODO: proper bounds checking for all types
 static void config2options(const config_t * config, struct options * options) {
-	// array
-	long long aaccesses;
-	long long begin;
-	long long repetitions;
-	long long end;
-	long long step;
-	char scaling[NAME_MAX];
-	char pattern[NAME_MAX];
-	// misc
-	double frequency;
-	int logging;
-	char logfile[NAME_MAX];
-	char create[NAME_MAX];
-	long long processes;
-	long long threads;
-	int silent;
 
-	// array group
+	// walking array group
+	struct options_walkarray wa_opt;
 	{
-		config_setting_t * array = config_lookup(config, FLD_ARRAY_GROUP);
-		config_setting_lookup_int64(array, FLD_ARRAY_ACCESSES, &aaccesses);
-		config_setting_lookup_int64(array, FLD_ARRAY_REPEAT, &repetitions);
-		config_setting_lookup_int64(array, FLD_ARRAY_BEGINLENGTH, &begin);
-		config_setting_lookup_int64(array, FLD_ARRAY_ENDLENGTH, &end);
-		config_setting_lookup_int64(array, FLD_ARRAY_INCREMENT, &step);
+		long long aaccesses, begin, repetitions, end, step;
+		char scaling[NAME_MAX], pattern[NAME_MAX];
+
+		config_setting_t * array = config_lookup(config, FLD_WALKARRAY_GROUP);
+		config_setting_lookup_int64(array, FLD_WALKARRAY_ACCESSES, &aaccesses);
+		config_setting_lookup_int64(array, FLD_WALKARRAY_REPEAT, &repetitions);
+		config_setting_lookup_int64(array, FLD_WALKARRAY_BEGINLENGTH, &begin);
+		config_setting_lookup_int64(array, FLD_WALKARRAY_ENDLENGTH, &end);
+		config_setting_lookup_int64(array, FLD_WALKARRAY_INCREMENT, &step);
 		c2o_strncpy(scaling,
-				config_setting_get_member(array, FLD_ARRAY_SCALING), NAME_MAX);
+				config_setting_get_member(array, FLD_WALKARRAY_SCALING), NAME_MAX);
 		c2o_strncpy(pattern,
-				config_setting_get_member(array, FLD_ARRAY_PATTERN), NAME_MAX);
+				config_setting_get_member(array, FLD_WALKARRAY_PATTERN), NAME_MAX);
+
+		wa_opt = (struct options_walkarray) {
+			(unsigned)aaccesses,
+				(walking_t)begin,
+				(walking_t)end,
+				pattern_typeFromString(pattern),
+				(unsigned)repetitions,
+				(walking_t)step
+		};
 	}
-	// miscellaneous
+
+	// streaming array group
+	struct options_streamarray sa_opt;
 	{
-		config_lookup_float(config, FLD_CPU_FREQUENCY, &frequency);
-		config_lookup_bool(config, FLD_LOGGING, &logging);
-		c2o_strncpy(logfile, config_lookup(config, FLD_LOGFILE), NAME_MAX);
-		c2o_strncpy(create, config_lookup(config, FLD_SPAWN), NAME_MAX);
-		config_lookup_int64(config, FLD_PROCESSES, &processes);
-		config_lookup_int64(config, FLD_THREADS, &threads);
-		config_lookup_bool(config, FLD_SILENT, &silent);
+		long long begin, end, step;
+		char scaling[NAME_MAX];
+
+		config_setting_t * array = config_lookup(config, FLD_STREAMARRAY_GROUP);
+		config_setting_lookup_int64(array, FLD_STREAMARRAY_BEGINLENGTH, &begin);
+		config_setting_lookup_int64(array, FLD_STREAMARRAY_ENDLENGTH, &end);
+		config_setting_lookup_int64(array, FLD_STREAMARRAY_INCREMENT, &step);
+		c2o_strncpy(scaling,
+				config_setting_get_member(array, FLD_STREAMARRAY_SCALING), NAME_MAX);
+
+		sa_opt = (struct options_streamarray) {
+			(walking_t)begin,
+				(walking_t)end,
+				(walking_t)step
+		};
 	}
-	struct options tmp = {
-		(unsigned)aaccesses,
-		(walking_t)begin,
-		spawn_typeFromString(create),
-		(walking_t)end,
-		frequency,
-		logging,
-		"", // XXX strncpy ! (log filename),
-		pattern_typeFromString(pattern),
-		(unsigned)processes,
-		(unsigned)repetitions,
-		(walking_t)step,
-		silent,
-		(unsigned)threads
-	};
-	strncpy(tmp.csvlogname, logfile, NAME_MAX);
-	memcpy(options, &tmp, sizeof(struct options));
+
+	// generic group
+	struct options_generic gn_opt;
+	{
+		double frequency;
+		int logging, silent;
+		char logfile[NAME_MAX], create[NAME_MAX];
+		long long processes, threads;
+
+		config_setting_t * generic = config_lookup(config, FLD_GENERIC_GROUP);
+		config_setting_lookup_float(generic, FLD_GENERIC_GPU_FREQUENCY, &frequency);
+		config_setting_lookup_bool(generic, FLD_GENERIC_LOGGING, &logging);
+		c2o_strncpy(logfile,
+				config_setting_get_member(generic, FLD_GENERIC_LOGFILE), NAME_MAX);
+		c2o_strncpy(create,
+				config_setting_get_member(generic, FLD_GENERIC_SPAWN), NAME_MAX);
+		config_setting_lookup_int64(generic, FLD_GENERIC_PROCESSES, &processes);
+		config_setting_lookup_int64(generic, FLD_GENERIC_THREADS, &threads);
+		config_setting_lookup_bool(generic, FLD_GENERIC_SILENT, &silent);
+
+		gn_opt = (struct options_generic) {
+			spawn_typeFromString(create),
+				frequency,
+				logging,
+				"", // XXX strncpy ! (log filename)
+				(unsigned)processes,
+				silent,
+				(unsigned)threads
+		};
+		strncpy(gn_opt.csvlogname, logfile, NAME_MAX);
+	}
+
+	options->walkArray = wa_opt;
+	options->streamArray = sa_opt;
+	options->generic = gn_opt;
 }
 
 static void options_help(const char * name) {
@@ -227,36 +287,88 @@ static void options_help(const char * name) {
 			name);
 }
 
-static void options_print(const struct options * options) {
-	fprintf(stderr,
-			"array accesses to perform: %u\n"
-			"process spawn method: %s\n"
-			"initial array size: %"PRIWALKING"\n"
-			"maximum array size: %"PRIWALKING"\n"
-			"cpu clock frequency: %.3f\n"
-			"CSV log base name: %s\n"
-			"CSV logging enabled: %s\n"
-			"array walking pattern: %s\n"
-			"operating processes: %u\n"
-			"threads per process: %u\n"
-			"single test configuration repeat: %u\n"
-			"array increment: %"PRIWALKING"\n"
-			"silent mode: %s\n"
-			"\n",
-			options->aaccesses,
-			spawn_typeToString(options->create),
-			options->begin,
-			options->end,
-			options->frequency,
-			options->csvlogname,
-			options->logging ? "yes" : "no",
-			pattern_typeToString(options->pattern),
-			options->processes,
-			options->threads,
-			options->repetitions,
-			options->step,
-			options->Silent ? "on" : "off"
+void options_walkarray_print(
+		FILE * out,
+		const char * prefix,
+		const struct options_walkarray * wa_opt)
+{
+	fprintf(out,
+			"%sbegin size = %"PRIWALKING";\n"
+			"%send size = %"PRIWALKING";\n"
+			"%sstep size = %"PRIWALKING";\n"
+			"%saccesses = %u;\n"
+			"%stest repetitions = %u;\n"
+			"%scycle pattern = %s;\n"
+			,
+			prefix, wa_opt->begin,
+			prefix, wa_opt->end,
+			prefix, wa_opt->step,
+			prefix, wa_opt->aaccesses,
+			prefix, wa_opt->repetitions,
+			prefix, pattern_typeToString(wa_opt->pattern)
 			);
+}
+
+void options_streamarray_print(
+		FILE * out,
+		const char * prefix,
+		const struct options_streamarray * sa_opt)
+{
+	fprintf(out,
+			"%sbegin size = %zd;\n"
+			"%send size = %zd;\n"
+			"%sstep size = %zd;\n"
+			,
+			prefix, sa_opt->begin,
+			prefix, sa_opt->end,
+			prefix, sa_opt->step
+			);
+}
+
+void options_generic_print(
+		FILE * out,
+		const char * prefix,
+		const struct options_generic * gn_opt)
+{
+	fprintf(out,
+			"%sprocess creation = %s;\n"
+			"%sCPU frequency = %lf;\n"
+			"%sCSV logging = %s;\n"
+			"%sbasename for CSV logfiles = %s;\n"
+			"%sprocesses = %u;\n"
+			"%sthreads = %u;\n"
+			"%ssilent mode = %s;\n"
+			,
+			prefix, spawn_typeToString(gn_opt->create),
+			prefix, gn_opt->frequency,
+			prefix, bool2onoff(gn_opt->logging),
+			prefix, gn_opt->csvlogname,
+			prefix, gn_opt->processes,
+			prefix, gn_opt->threads,
+			prefix, bool2onoff(gn_opt->silent)
+			);
+}
+
+void options_print(
+		FILE * out,
+		const char * prefix,
+		const struct options * opt)
+{
+	// keep 'prefix' as the first characters
+	const char indent[] = "  ";
+	const size_t childprefixlen = 1 + strlen(prefix) + strlen(indent);
+	char * childprefix = malloc(childprefixlen);
+	snprintf(childprefix, childprefixlen, "%s%s", prefix, indent);
+
+	fprintf(out, "%sgeneric :\n{\n", prefix);
+	options_generic_print(out, childprefix, &(opt->generic));
+	fprintf(out, "%s};\nwalk array :\n{\n", prefix);
+	options_walkarray_print(out, childprefix, &(opt->walkArray));
+	fprintf(out, "%s};\nstream array :\n{\n", prefix);
+	options_streamarray_print(out, childprefix, &(opt->streamArray));
+	fprintf(out, "%s};\n", prefix);
+
+	free(childprefix);
 }
 
 // TODO: error handling
@@ -332,7 +444,7 @@ void options_parse(int argc, char * argv[], struct options * options) {
 	config_destroy(&config);
 
 	if (print_options)
-		options_print(options);
+		options_print(stderr, "", options);
 }
 
 #define CASE_ENUM2STRING(ENUM) case ENUM: return #ENUM

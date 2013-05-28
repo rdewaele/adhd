@@ -25,6 +25,9 @@ static inline nsec_t timespecToNsec(struct timespec * t) {
 	return 1000 * 1000 * 1000 * t->tv_sec + t->tv_nsec;
 }
 
+const char * bool2yesno(bool b);
+const char * bool2onoff(bool b);
+
 // walkArray creation report
 void logMakeWalkArray(
 		const struct options * const options,
