@@ -1,6 +1,5 @@
 #include "parallel.h"
 
-#include "benchmarks.h"
 #include "options.h"
 #include "logging.h"
 
@@ -38,8 +37,7 @@ stopSpawn:
 void linearSpawn(const struct options * const options) {
 	unsigned nchildren = options->processes;
 	if(0 == spawnChildren_fork(nchildren))
-		// TODO: DEPRECATED
-		walk(options);
+		spawnThreads(options);
 	else
 		while (nchildren--)
 			wait(NULL);
@@ -69,8 +67,7 @@ void treeSpawn(const struct options * const options) {
 
 	} while (todo > 0);
 
-	// TODO: DEPRECATED
-	walk(options);
+	spawnThreads(options);
 
 	// wait for children
 	while (nchildren--)
