@@ -157,8 +157,13 @@ void spawnThreads(const struct options * const options) {
 			case EAGAIN:
 			case EINVAL:
 			case EPERM:
+				errno = rc;
+				perror("pthread_create");
+				exit(EXIT_FAILURE);
+				break;
 			default:
-				return;
+				fprintf(stderr, "unknown error in pthread_create\n");
+				exit(EXIT_FAILURE);
 				break;
 		}
 	}
