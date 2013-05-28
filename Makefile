@@ -25,6 +25,7 @@ LDFLAGS += -lm -lrt \
 SOURCES = main.c logging.c options.c parallel.c \
 					benchmarks/util.c \
 					benchmarks/arraywalk.c \
+					benchmarks/flops.c \
 					benchmarks/streaming.c
 VALGRIND_CONF = vgconfig.cfg
 OBJECTS = $(SOURCES:.c=.o)
