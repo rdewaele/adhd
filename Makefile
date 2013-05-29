@@ -12,6 +12,10 @@ EXTRA_WARNINGS := -Wconversion -Wshadow -Wpointer-arith -Wcast-qual \
 ifneq ($(CC),icc)
 	EXTRA_WARNINGS += -Wcast-align
 endif
+# make icc report very elaborately about vectorization successes and failures
+ifeq ($(CC),icc)
+	CFLAGS += -vec-report=6
+endif
 CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -W -Wall -Wextra -pedantic \
 	$(EXTRA_WARNINGS) \
 	-O3 -funroll-loops \
