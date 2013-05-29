@@ -74,62 +74,6 @@ void treeSpawn(const struct options * const options) {
 		wait(NULL);
 }
 
-void * runWalk(void * c) {
-	const struct thread_context * const context = c;
-	const struct options * const options = context->options;
-	const struct options_walkarray * const wa_opt = &(options->walkArray);
-
-	struct timespec elapsed;
-
-	struct walkArray * array = NULL;
-#define WALKARRAY_FOREACH_LENGTH(OPT_WA,LENGTH) \
-	LENGTH = 0 == OPT_WA->begin ? OPT_WA->step : OPT_WA->begin; \
-	for ( ; LENGTH <= OPT_WA->end ; LENGTH += OPT_WA->step)
-	walking_t len;
-	WALKARRAY_FOREACH_LENGTH(wa_opt, len) {
-		struct timespec t_wa = makeWalkArray(wa_opt->pattern, len, &array);
-		logMakeWalkArray(options, array, &t_wa);
-
-		// warmup run
-		(void)walkArray(array, wa_opt->aaccesses, NULL);
-
-		// indicate setup done
-		if (context->ready) { pthread_barrier_wait(context->ready); }
-
-		// wait for 'go' signal
-		if (context->start) { pthread_barrier_wait(context->start); }
-
-		// run timed code
-		// TODO: option to enable or disable thread-local timing information
-		nsec_t timings[wa_opt->repetitions];
-		if (/* options->thread_timing */ true) {
-			for (size_t i = 0; i < wa_opt->repetitions; ++i) {
-				walkArray(array, wa_opt->aaccesses, &elapsed);
-				timings[i] = timespecToNsec(&elapsed);
-			}
-		}
-		else {
-			for (size_t i = 0; i < wa_opt->repetitions; ++i) {
-				walkArray(array, wa_opt->aaccesses, NULL);
-			}
-		}
-
-		// indicate hot loop done
-		if (context->stop) { pthread_barrier_wait(context->stop); }
-
-		freeWalkArray(array);
-
-		// TODO: average
-		if (/* options->thread_timing */ true)
-			logWalkArray(options, timings, 0);
-
-		// overflow could cause infinite loop
-		if (WALKING_MAX - wa_opt->step < len)
-			break;
-	}
-	return NULL;
-}
-
 // TODO: error correctness
 void spawnThreads(const struct options * const options) {
 	const struct options_walkarray * const wa_opt = &(options->walkArray);
@@ -173,6 +117,9 @@ void spawnThreads(const struct options * const options) {
 	}
 
 	// time each of the runs of all threads
+#define WALKARRAY_FOREACH_LENGTH(OPT_WA,LENGTH) \
+	LENGTH = 0 == OPT_WA->begin ? OPT_WA->step : OPT_WA->begin; \
+	for ( ; LENGTH <= OPT_WA->end ; LENGTH += OPT_WA->step)
 	walking_t len;
 	WALKARRAY_FOREACH_LENGTH(wa_opt, len) {
 		struct timespec start, stop, elapsed;
@@ -231,4 +178,77 @@ void spawnProcesses(const struct options * const options) {
 					break;
 			}
 	}
+}
+
+/*******************************************************************************
+ * threaded benchmarks below
+ */
+
+void * runWalk(void * c) {
+	const struct thread_context * const context = c;
+	const struct options * const options = context->options;
+	const struct options_walkarray * const wa_opt = &(options->walkArray);
+
+	struct timespec elapsed;
+
+	struct walkArray * array = NULL;
+	walking_t len;
+	WALKARRAY_FOREACH_LENGTH(wa_opt, len) {
+		struct timespec t_wa = makeWalkArray(wa_opt->pattern, len, &array);
+		logMakeWalkArray(options, array, &t_wa);
+
+		// warmup run
+		(void)walkArray(array, wa_opt->aaccesses, NULL);
+
+		// indicate setup done
+		if (context->ready) { pthread_barrier_wait(context->ready); }
+
+		// wait for 'go' signal
+		if (context->start) { pthread_barrier_wait(context->start); }
+
+		// run timed code
+		// TODO: option to enable or disable thread-local timing information
+		nsec_t timings[wa_opt->repetitions];
+		if (/* options->thread_timing */ true) {
+			for (size_t i = 0; i < wa_opt->repetitions; ++i) {
+				walkArray(array, wa_opt->aaccesses, &elapsed);
+				timings[i] = timespecToNsec(&elapsed);
+			}
+		}
+		else {
+			for (size_t i = 0; i < wa_opt->repetitions; ++i) {
+				walkArray(array, wa_opt->aaccesses, NULL);
+			}
+		}
+
+		// indicate hot loop done
+		if (context->stop) { pthread_barrier_wait(context->stop); }
+
+		freeWalkArray(array);
+
+		// TODO: average
+		if (/* options->thread_timing */ true)
+			logWalkArray(options, timings, 0);
+
+		// overflow could cause infinite loop
+		if (WALKING_MAX - wa_opt->step < len)
+			break;
+	}
+	return NULL;
+}
+
+void * runStreaming(void * c) {
+	const struct thread_context * const context = c;
+	const struct options * const options = context->options;
+	const struct options_streamarray * const sa_opt = &(options->streamArray);
+
+	return NULL;
+}
+
+void * runFlops(void * c) {
+	const struct thread_context * const context = c;
+	const struct options * const options = context->options;
+	const struct options_flopsarray * const fa_opt = &(options->flopsArray);
+
+	return NULL;
 }

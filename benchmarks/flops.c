@@ -1,5 +1,6 @@
 #include "flops.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 static void fvec_init(int len, float * restrict vec) {
@@ -19,7 +20,7 @@ static void dvec_init(int len, double * restrict vec) {
 // aligned allocation to prevent crossing cache line boundaries for data that
 // fits on a single cache line
 static void allocFlopsArray(struct flopsArray * array) {
-	size_t size = array->len;
+	size_t size = (size_t)array->len;
 	size_t align;
 	void * data, * scale, * offset;
 	switch (array->precision) {
@@ -37,6 +38,11 @@ static void allocFlopsArray(struct flopsArray * array) {
 			scale = &(array->vec.dp.scale);
 			offset = &(array->vec.dp.offset);
 			break;
+		default:
+			fprintf(stderr,
+					"Internal error: unknown precision type requested in %s\n",
+					__func__);
+			exit(EXIT_FAILURE);
 	}
 
 	posix_memalign(data, align, size);
@@ -101,10 +107,10 @@ typedef void dvec_fn(const int, double * restrict, double * restrict, double * r
 		}\
 	}
 
-DEF_MAP_FLOP(fvec_add,float,+);
-DEF_MAP_FLOP(dvec_add,double,+);
-DEF_MAP_FLOP(fvec_mul,float,*);
-DEF_MAP_FLOP(dvec_mul,double,*);
+DEF_MAP_FLOP(fvec_add,float,+)
+DEF_MAP_FLOP(dvec_add,double,+)
+DEF_MAP_FLOP(fvec_mul,float,*)
+DEF_MAP_FLOP(dvec_mul,double,*)
 
 #define DEF_MADD(NAME,FT)\
 	static void NAME (const int length,\
@@ -116,8 +122,8 @@ DEF_MAP_FLOP(dvec_mul,double,*);
 		}\
 	}
 
-DEF_MADD(fvec_madd,float);
-DEF_MADD(dvec_madd,double);
+DEF_MADD(fvec_madd,float)
+DEF_MADD(dvec_madd,double)
 
 void flopsArray(enum flop_t operation, struct flopsArray * array) {
 	switch (array->precision) {
@@ -134,6 +140,9 @@ void flopsArray(enum flop_t operation, struct flopsArray * array) {
 					case MADD:
 						func = fvec_madd;
 						break;
+					default:
+						fprintf(stderr, "Internal error: unknown operation type in %s\n", __func__);
+						exit(EXIT_FAILURE);
 				}
 				func(array->len, array->vec.sp.data, array->vec.sp.scale, array->vec.sp.offset);
 			}
@@ -151,6 +160,9 @@ void flopsArray(enum flop_t operation, struct flopsArray * array) {
 					case MADD:
 						func = dvec_madd;
 						break;
+					default:
+						fprintf(stderr, "Internal error: unknown operation type in %s\n", __func__);
+						exit(EXIT_FAILURE);
 				}
 				func(array->len, array->vec.dp.data, array->vec.dp.scale, array->vec.dp.offset);
 			}

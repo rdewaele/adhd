@@ -27,10 +27,6 @@ void spawnProcesses(const struct options * const options);
 // function type that can be used to start a pthread with
 typedef void * thread_fn(void *);
 
-// performs the 'walk' benchmark
-thread_fn runWalk;
-
-
 // context for a pthread's main function
 struct thread_context {
 	// as defined in options.h
@@ -42,3 +38,12 @@ struct thread_context {
 	// end hot loop
 	pthread_barrier_t * stop;
 };
+
+// performs the 'walk' benchmark
+thread_fn runWalk;
+
+// performs the 'streaming' benchmark
+thread_fn runStreaming;
+
+// performs the 'flops' benchmark
+thread_fn runFlops;

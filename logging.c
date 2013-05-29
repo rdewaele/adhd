@@ -76,7 +76,7 @@ void logWalkArray(
 {
 	const struct options_walkarray * const wa_opt = &(options->walkArray);
 	const struct options_generic * const gn_opt = &(options->generic);
-	assert(options->repetitions > 0);
+	assert(wa_opt->repetitions > 0);
 	// average
 	nsec_t totalnsec = 0;
 	for (size_t i = 0; i < wa_opt->repetitions; ++i)

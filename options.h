@@ -56,10 +56,16 @@ struct options_streamarray {
 	walking_t step;
 };
 
+struct options_flopsarray {
+	// size for the array of floating types
+	int length;
+};
+
 struct options {
 	struct options_generic generic;
 	struct options_walkarray walkArray;
 	struct options_streamarray streamArray;
+	struct options_flopsarray flopsArray;
 };
 
 void options_parse(int argc, char * argv[], struct options * options);
@@ -78,6 +84,11 @@ void options_streamarray_print(
 		FILE * out,
 		const char * prefix,
 		const struct options_streamarray * sa_opt);
+
+void options_flopsarray_print(
+		FILE * out,
+		const char * prefix,
+		const struct options_streamarray * fa_opt);
 
 void options_print(
 		FILE * out,
