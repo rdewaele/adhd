@@ -88,7 +88,7 @@ void options_streamarray_print(
 void options_flopsarray_print(
 		FILE * out,
 		const char * prefix,
-		const struct options_streamarray * fa_opt);
+		const struct options_flopsarray * fa_opt);
 
 void options_print(
 		FILE * out,

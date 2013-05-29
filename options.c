@@ -376,6 +376,18 @@ void options_streamarray_print(
 			);
 }
 
+void options_flopsarray_print(
+		FILE * out,
+		const char * prefix,
+		const struct options_flopsarray * fa_opt)
+{
+	fprintf(out,
+			"%slength = %d;\n"
+			,
+			prefix, fa_opt->length
+			);
+}
+
 void options_print(
 		FILE * out,
 		const char * prefix,
@@ -393,6 +405,8 @@ void options_print(
 	options_walkarray_print(out, childprefix, &(opt->walkArray));
 	fprintf(out, "%s};\nstream array :\n{\n", prefix);
 	options_streamarray_print(out, childprefix, &(opt->streamArray));
+	fprintf(out, "%s};\nflops array :\n{\n", prefix);
+	options_flopsarray_print(out, childprefix, &(opt->flopsArray));
 	fprintf(out, "%s};\n", prefix);
 
 	free(childprefix);
