@@ -61,6 +61,9 @@ static const char FLD_STREAMARRAY_ENDLENGTH[] = "endlength";
 static const char FLD_STREAMARRAY_INCREMENT[] = "increment";
 static const char FLD_STREAMARRAY_SCALING[] = "scaling";
 
+static const char FLD_FLOPSARRAY_GROUP[] = "flopsarray";
+static const char FLD_FLOPSARRAY_LENGTH[] = "length";
+
 // load the default configuration in cfg
 static void set_default_config(config_t * cfg) {
 	static const unsigned AACCESSES = 4 * 1024 * 1024;
@@ -179,6 +182,16 @@ static void set_default_config(config_t * cfg) {
 		setting = config_setting_add(array, FLD_STREAMARRAY_SCALING, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, SCALING);
 	}
+
+	// flops array group
+	{
+		config_setting_t *array =
+			config_setting_add(root, FLD_FLOPSARRAY_GROUP, CONFIG_TYPE_GROUP);
+
+		// array size
+		setting = config_setting_add(array, FLD_FLOPSARRAY_LENGTH, CONFIG_TYPE_INT);
+		config_setting_set_int64(setting, END);
+	}
 }
 
 static void c2o_strncpy(
@@ -273,9 +286,23 @@ static void config2options(const config_t * config, struct options * options) {
 		};
 	}
 
+	// flops array group
+	struct options_flopsarray fa_opt;
+	{
+		int length;
+
+		config_setting_t * array = config_lookup(config, FLD_FLOPSARRAY_GROUP);
+		config_setting_lookup_int(array, FLD_FLOPSARRAY_LENGTH, &length);
+
+		fa_opt = (struct options_flopsarray) {
+			length
+		};
+	}
+
 	options->generic = gn_opt;
 	options->walkArray = wa_opt;
 	options->streamArray = sa_opt;
+	options->flopsArray = fa_opt;
 }
 
 static void options_help(const char * name) {
