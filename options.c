@@ -46,6 +46,8 @@ static const char FLD_GENERIC_PROCESSES[] = "processes";
 static const char FLD_GENERIC_SILENT[] = "silent";
 static const char FLD_GENERIC_THREADS[] = "threads";
 
+static const char FLD_PROGRAMS_GROUP[] = "programs";
+
 static const char FLD_WALKARRAY_GROUP[] = "walkarray";
 static const char FLD_WALKARRAY_ACCESSES[] = "accesses";
 static const char FLD_WALKARRAY_REPEAT[] = "repeat";
@@ -89,6 +91,25 @@ static void set_default_config(config_t * cfg) {
 	{
 		config_setting_t *generic =
 			config_setting_add(root, FLD_GENERIC_GROUP, CONFIG_TYPE_GROUP);
+
+		// array of names of enabled programs (uses corresponding group names for
+		// the sake of simplicity)
+		{
+			config_setting_t *programs =
+				config_setting_add(generic, FLD_PROGRAMS_GROUP, CONFIG_TYPE_ARRAY);
+
+			static const char *names[] = {
+				FLD_WALKARRAY_GROUP,
+				FLD_STREAMARRAY_GROUP,
+				FLD_FLOPSARRAY_GROUP,
+				NULL // mark end of list
+			};
+
+			for (size_t i = 0; names[i]; ++i) {
+				setting = config_setting_add(programs, NULL, CONFIG_TYPE_STRING);
+				config_setting_set_string(setting, names[i]);
+			}
+		}
 
 		// CPU frequency to calculate cycle estimate
 		// TODO: use actual cycle counter in the CPU
