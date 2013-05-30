@@ -138,23 +138,19 @@ void launchWalk(const struct options * const options) {
 
 	 	// (send) shared data ready
 		pthread_barrier_wait(&ready);
-		fprintf(stderr, "master passed ready\n");
 		nsec_t timings[wa_opt->repetitions];
 		for (unsigned i = 0; i < wa_opt->repetitions; ++i) {
 			struct timespec t_go, t_finish, t_lap;
 
 			// (receive) threads primed
 			pthread_barrier_wait(&set);
-			fprintf(stderr, "master passed set\n");
 			clock_gettime(CLOCK_MONOTONIC, &t_go); 
 
 			// (send) timer started
 			pthread_barrier_wait(&go);
-			fprintf(stderr, "master passed go\n");
 
 			// (receive) threads finished
 			pthread_barrier_wait(&finish);
-			fprintf(stderr, "master passed finished\n");
 			clock_gettime(CLOCK_MONOTONIC, &t_finish);
 
 			// some bookkeeping of timing results
@@ -218,30 +214,28 @@ void * runWalk(void * c) {
 	const struct options * const options = context->options;
 	const struct options_walkarray * const wa_opt = &(options->walkArray);
 
-	struct walkArray * const array = context->shared;
+	walking_t len;
+	WALKARRAY_FOREACH_LENGTH(wa_opt, len) {
+		// (receive) data ready
+		pthread_barrier_wait(context->ready);
 
-	// (receive) data ready
-	pthread_barrier_wait(context->ready);
-		fprintf(stderr, "passed ready\n");
+		struct walkArray * const array = context->shared;
 
-	// warmup run
-	fprintf(stderr, "array address: %p\n", array);
-	(void)walkArray(array, wa_opt->aaccesses, NULL);
+		// warmup run
+		(void)walkArray(array, wa_opt->aaccesses, NULL);
 
-	for (size_t i = 0; i < wa_opt->repetitions; ++i) {
-		// (send) primed
-		pthread_barrier_wait(context->set);
-		fprintf(stderr, "passed set\n");
+		for (size_t i = 0; i < wa_opt->repetitions; ++i) {
+			// (send) primed
+			pthread_barrier_wait(context->set);
 
-		// (receive) timer started
-		pthread_barrier_wait(context->go);
-		fprintf(stderr, "passed go\n");
+			// (receive) timer started
+			pthread_barrier_wait(context->go);
 
-		walkArray(array, wa_opt->aaccesses, NULL);
+			walkArray(array, wa_opt->aaccesses, NULL);
 
-		// (send) run finished
-		pthread_barrier_wait(context->finish);
-		fprintf(stderr, "passed finish\n");
+			// (send) run finished
+			pthread_barrier_wait(context->finish);
+		}
 	}
 
 	return NULL;
