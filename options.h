@@ -41,7 +41,7 @@ struct options_walkarray {
 	walking_t end;
 	// walking pattern: traverse an array sequentially (up/down) or randomly
 	enum pattern_type pattern;
-	// number of processes to run in parallel
+	// calculate average and standard deviation based on this number of runs
 	unsigned repetitions;
 	// the test array grows linearly by this amount (determines granularity)
 	walking_t step;

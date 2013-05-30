@@ -31,12 +31,16 @@ typedef void * thread_fn(void *);
 struct thread_context {
 	// as defined in options.h
 	const struct options * const options;
-	// ready to start hot loop
+	// shared data
+	void * shared;
+	// shared benchmark data setup ready
 	pthread_barrier_t * ready;
-	// begin hot loop
-	pthread_barrier_t * start;
-	// end hot loop
-	pthread_barrier_t * stop;
+	// hot threads setup ready (may depend on data)
+	pthread_barrier_t * set;
+	// run hot loop, which should be timed
+	pthread_barrier_t * go;
+	// thread finished hot loop (stop timer when all threads finished)
+	pthread_barrier_t * finish;
 };
 
 // performs the 'walk' benchmark
@@ -47,3 +51,10 @@ thread_fn runStreaming;
 
 // performs the 'flops' benchmark
 thread_fn runFlops;
+
+// benchmark launcher function type
+typedef void launcher_fn(const struct options * const options);
+
+launcher_fn launchWalk;
+launcher_fn launchStream;
+launcher_fn launchFlops;

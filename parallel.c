@@ -74,27 +74,32 @@ void treeSpawn(const struct options * const options) {
 		wait(NULL);
 }
 
-// TODO: error correctness
 void spawnThreads(const struct options * const options) {
+	launchWalk(options);
+}
+
+// TODO: error correctness
+void launchWalk(const struct options * const options) {
 	const struct options_walkarray * const wa_opt = &(options->walkArray);
 	const struct options_generic * const gn_opt = &(options->generic);
 
 	unsigned num = gn_opt->threads;
 	pthread_t allthreads[num];
-	pthread_barrier_t syncready, syncstart, syncstop;
+	pthread_barrier_t ready, set, go, finish;
 
-	pthread_barrier_init(&syncready, NULL, num + 1);
-	pthread_barrier_init(&syncstart, NULL, num + 1);
-	pthread_barrier_init(&syncstop, NULL, num + 1);
+	const unsigned contenders = num + 1;
+	pthread_barrier_init(&ready, NULL, contenders);
+	pthread_barrier_init(&set, NULL, contenders);
+	pthread_barrier_init(&go, NULL, contenders);
+	pthread_barrier_init(&finish, NULL, contenders);
 
 	struct thread_context optarg = {
 		options,
-		&syncready,
-		&syncstart,
-		&syncstop
+		NULL,
+		&ready, &set, &go, &finish
 	};
 
-	// start threads
+	// start threads (must adhere to the 4-barrier protocol)
 	pthread_t * thread = allthreads;
 	for (unsigned i = 0; i < num; ++i) {
 		int rc = pthread_create(thread++, NULL, runWalk, &optarg);
@@ -120,25 +125,49 @@ void spawnThreads(const struct options * const options) {
 #define WALKARRAY_FOREACH_LENGTH(OPT_WA,LENGTH) \
 	LENGTH = 0 == OPT_WA->begin ? OPT_WA->step : OPT_WA->begin; \
 	for ( ; LENGTH <= OPT_WA->end ; LENGTH += OPT_WA->step)
+
+	struct walkArray ** array = (void *)&(optarg.shared);
+
 	walking_t len;
 	WALKARRAY_FOREACH_LENGTH(wa_opt, len) {
+		struct timespec t_wa = makeWalkArray(wa_opt->pattern, len, array);
+		logMakeWalkArray(options, *array, &t_wa);
+
 		struct timespec start, stop, elapsed;
+		nsec_t old_avg = 0;
 
-		pthread_barrier_wait(&syncready);
-		pthread_barrier_destroy(&syncready);
-		pthread_barrier_init(&syncready, NULL, num + 1);
+	 	// (send) shared data ready
+		pthread_barrier_wait(&ready);
+		fprintf(stderr, "master passed ready\n");
+		nsec_t timings[wa_opt->repetitions];
+		for (unsigned i = 0; i < wa_opt->repetitions; ++i) {
+			struct timespec t_go, t_finish, t_lap;
 
-		clock_gettime(CLOCK_MONOTONIC, &start);
+			// (receive) threads primed
+			pthread_barrier_wait(&set);
+			fprintf(stderr, "master passed set\n");
+			clock_gettime(CLOCK_MONOTONIC, &t_go); 
 
-		pthread_barrier_wait(&syncstart);
-		pthread_barrier_destroy(&syncstart);
-		pthread_barrier_init(&syncstart, NULL, num + 1);
+			// (send) timer started
+			pthread_barrier_wait(&go);
+			fprintf(stderr, "master passed go\n");
 
-		pthread_barrier_wait(&syncstop);
-		clock_gettime(CLOCK_MONOTONIC, &stop);
-		pthread_barrier_destroy(&syncstop);
-		pthread_barrier_init(&syncstop, NULL, num + 1);
+			// (receive) threads finished
+			pthread_barrier_wait(&finish);
+			fprintf(stderr, "master passed finished\n");
+			clock_gettime(CLOCK_MONOTONIC, &t_finish);
 
+			// some bookkeeping of timing results
+			t_lap.tv_sec = t_finish.tv_sec - t_go.tv_sec;
+			t_lap.tv_nsec = t_finish.tv_nsec - t_go.tv_nsec;
+			timings[i] = timespecToNsec(&t_lap);
+		}
+
+		freeWalkArray(*array);
+
+		old_avg = logWalkArray(options, timings, old_avg);
+
+		// benchmark instance statistics
 		elapsed.tv_sec = stop.tv_sec - start.tv_sec;
 		elapsed.tv_nsec = stop.tv_nsec - start.tv_nsec;
 
@@ -154,7 +183,7 @@ void spawnThreads(const struct options * const options) {
 				"Bandwidth: ~%.3lf GiB/s\n", tb_new);
 	}
 
-	// wait for threads to finish
+	// wait for threads to finish and return
 	for (unsigned i = 0; i < num; ++i)
 		pthread_join(allthreads[i], NULL);
 }
@@ -189,51 +218,32 @@ void * runWalk(void * c) {
 	const struct options * const options = context->options;
 	const struct options_walkarray * const wa_opt = &(options->walkArray);
 
-	struct timespec elapsed;
+	struct walkArray * const array = context->shared;
 
-	struct walkArray * array = NULL;
-	walking_t len;
-	WALKARRAY_FOREACH_LENGTH(wa_opt, len) {
-		struct timespec t_wa = makeWalkArray(wa_opt->pattern, len, &array);
-		logMakeWalkArray(options, array, &t_wa);
+	// (receive) data ready
+	pthread_barrier_wait(context->ready);
+		fprintf(stderr, "passed ready\n");
 
-		// warmup run
-		(void)walkArray(array, wa_opt->aaccesses, NULL);
+	// warmup run
+	fprintf(stderr, "array address: %p\n", array);
+	(void)walkArray(array, wa_opt->aaccesses, NULL);
 
-		// indicate setup done
-		if (context->ready) { pthread_barrier_wait(context->ready); }
+	for (size_t i = 0; i < wa_opt->repetitions; ++i) {
+		// (send) primed
+		pthread_barrier_wait(context->set);
+		fprintf(stderr, "passed set\n");
 
-		// wait for 'go' signal
-		if (context->start) { pthread_barrier_wait(context->start); }
+		// (receive) timer started
+		pthread_barrier_wait(context->go);
+		fprintf(stderr, "passed go\n");
 
-		// run timed code
-		// TODO: option to enable or disable thread-local timing information
-		nsec_t timings[wa_opt->repetitions];
-		if (/* options->thread_timing */ true) {
-			for (size_t i = 0; i < wa_opt->repetitions; ++i) {
-				walkArray(array, wa_opt->aaccesses, &elapsed);
-				timings[i] = timespecToNsec(&elapsed);
-			}
-		}
-		else {
-			for (size_t i = 0; i < wa_opt->repetitions; ++i) {
-				walkArray(array, wa_opt->aaccesses, NULL);
-			}
-		}
+		walkArray(array, wa_opt->aaccesses, NULL);
 
-		// indicate hot loop done
-		if (context->stop) { pthread_barrier_wait(context->stop); }
-
-		freeWalkArray(array);
-
-		// TODO: average
-		if (/* options->thread_timing */ true)
-			logWalkArray(options, timings, 0);
-
-		// overflow could cause infinite loop
-		if (WALKING_MAX - wa_opt->step < len)
-			break;
+		// (send) run finished
+		pthread_barrier_wait(context->finish);
+		fprintf(stderr, "passed finish\n");
 	}
+
 	return NULL;
 }
 

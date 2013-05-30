@@ -69,7 +69,7 @@ void logMakeWalkArray(
 			options->walkArray.aaccesses);
 }
 
-void logWalkArray(
+nsec_t logWalkArray(
 		const struct options * const options,
 		const nsec_t * const timings,
 		nsec_t old_avg)
@@ -137,4 +137,6 @@ void logWalkArray(
 			tb_old, tb_new);
 
 	verbose(options, "\n");
+
+	return new_avg;
 }
