@@ -14,16 +14,19 @@ typedef union {
 
 struct streamArray {
 	enum stream_width width;
-	size_t len;
+	unsigned len;
+	size_t size;
 	array_t in;
 	array_t out;
 };
 
 void makeStreamArray(
 		enum stream_width width,
-		size_t len,
+		unsigned len,
 		struct streamArray ** result);
 
 void freeStreamArray(struct streamArray * array);
 
 void streamArray(struct streamArray * array);
+
+void memcpyArray(struct streamArray * array);

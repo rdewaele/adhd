@@ -297,7 +297,7 @@ void * runStream(void * c) {
 		context->shared = makeRunStreamSharedData(sa_opt);
 
 	// time each of the runs of all threads
-	size_t len = 0 == sa_opt->begin ? sa_opt->step : sa_opt->begin;
+	unsigned len = 0 == sa_opt->begin ? sa_opt->step : sa_opt->begin;
 	for ( ; len <= sa_opt->end ; len += sa_opt->step) {
 		struct timespec t_go, t_finish, t_lap;
 		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
@@ -319,7 +319,9 @@ void * runStream(void * c) {
 		pthread_barrier_wait(context->go);
 		/*- barrier ------------------------------------------------------------*/
 
+		// TODO
 		streamArray(shared->array);
+		//memcpyArray(shared->array);
 
 		pthread_barrier_wait(context->finish);
 		/*- barrier ------------------------------------------------------------*/
@@ -335,16 +337,14 @@ void * runStream(void * c) {
 			nsec_t totalnsec = timespecToNsec(&t_lap);
 
 			// TODO: scale the amount of bytes fetched per thread
-			// TODO: scale with requested widths
-			double totalbytes = (double)(64 * len);
-			double tb_new = totalbytes / (double)totalnsec;
 
 			verbose(options,
 					"Array size: %zd MiB | Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
-					len * 8 / (1024 * 1024), totalnsec, totalnsec / (1000 * 1000));
+					shared->array->size / (1024 * 1024), totalnsec, totalnsec / (1000 * 1000));
 
 			verbose(options,
-					"Bandwidth: ~%.3lf GiB/s\n", tb_new);
+					"Bandwidth: ~%.3lf GiB/s\n",
+					(double)shared->array->size / (double)totalnsec);
 		}
 	}
 	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)

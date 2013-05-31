@@ -304,9 +304,9 @@ static void config2options(const config_t * config, struct options * options) {
 				config_setting_get_member(array, FLD_STREAMARRAY_SCALING), NAME_MAX);
 
 		sa_opt = (struct options_streamarray) {
-			(walking_t)begin,
-				(walking_t)end,
-				(walking_t)step
+			(unsigned)begin,
+				(unsigned)end,
+				(unsigned)step
 		};
 	}
 
@@ -390,9 +390,9 @@ void options_streamarray_print(
 		const struct options_streamarray * sa_opt)
 {
 	fprintf(out,
-			"%sbegin size = %zd;\n"
-			"%send size = %zd;\n"
-			"%sstep size = %zd;\n"
+			"%sbegin size = %u;\n"
+			"%send size = %u;\n"
+			"%sstep size = %u;\n"
 			,
 			prefix, sa_opt->begin,
 			prefix, sa_opt->end,

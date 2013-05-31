@@ -49,11 +49,11 @@ struct options_walkarray {
 
 struct options_streamarray {
 	// initial size for the benchmark's array
-	walking_t begin;
+	unsigned begin;
 	// upper size limit for the benchmark's array
-	walking_t end;
+	unsigned end;
 	// the test array grows linearly by this amount (determines granularity)
-	walking_t step;
+	unsigned step;
 };
 
 struct options_flopsarray {
