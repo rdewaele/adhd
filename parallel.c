@@ -34,10 +34,10 @@ stopSpawn:
 }
 
 // create the desired amount of children all from the same parent
-void linearSpawn(const struct options * const options) {
+void linearSpawn(const struct options * const options, thread_fn benchmark) {
 	unsigned nchildren = options->generic.processes;
 	if(0 == spawnChildren_fork(nchildren))
-		spawnThreads(options);
+		spawnThreads(options, benchmark);
 	else
 		while (nchildren--)
 			wait(NULL);
@@ -45,7 +45,7 @@ void linearSpawn(const struct options * const options) {
 
 // create children in a tree-like fashion; i.e. children creating children
 // XXX assumes options.processes > 1
-void treeSpawn(const struct options * const options) {
+void treeSpawn(const struct options * const options, thread_fn benchmark) {
 	// TODO: maybe introduce support for configurable branching factors
 	unsigned todo = options->generic.processes - 1; // initial process will also calculate
 	unsigned nchildren = 0;
@@ -67,42 +67,38 @@ void treeSpawn(const struct options * const options) {
 
 	} while (todo > 0);
 
-	spawnThreads(options);
+	spawnThreads(options, benchmark);
 
 	// wait for children
 	while (nchildren--)
 		wait(NULL);
 }
 
-void spawnThreads(const struct options * const options) {
-	launchWalk(options);
-}
-
 // TODO: error correctness
-void launchWalk(const struct options * const options) {
-	const struct options_walkarray * const wa_opt = &(options->walkArray);
+void spawnThreads(const struct options * const options, thread_fn benchmark) {
 	const struct options_generic * const gn_opt = &(options->generic);
 
 	unsigned num = gn_opt->threads;
 	pthread_t allthreads[num];
-	pthread_barrier_t ready, set, go, finish;
+	pthread_barrier_t init, ready, set, go, finish;
 
-	const unsigned contenders = num + 1;
-	pthread_barrier_init(&ready, NULL, contenders);
-	pthread_barrier_init(&set, NULL, contenders);
-	pthread_barrier_init(&go, NULL, contenders);
-	pthread_barrier_init(&finish, NULL, contenders);
+	pthread_barrier_init(&init, NULL, num);
+	pthread_barrier_init(&ready, NULL, num);
+	pthread_barrier_init(&set, NULL, num);
+	pthread_barrier_init(&go, NULL, num);
+	pthread_barrier_init(&finish, NULL, num);
 
 	struct thread_context optarg = {
 		options,
+		num,
 		NULL,
-		&ready, &set, &go, &finish
+		&init, &ready, &set, &go, &finish
 	};
 
 	// start threads (must adhere to the 4-barrier protocol)
 	pthread_t * thread = allthreads;
 	for (unsigned i = 0; i < num; ++i) {
-		int rc = pthread_create(thread++, NULL, runWalk, &optarg);
+		int rc = pthread_create(thread++, NULL, benchmark, &optarg);
 		switch (rc) {
 			case 0:
 				continue;
@@ -121,64 +117,6 @@ void launchWalk(const struct options * const options) {
 		}
 	}
 
-	// time each of the runs of all threads
-#define WALKARRAY_FOREACH_LENGTH(OPT_WA,LENGTH) \
-	LENGTH = 0 == OPT_WA->begin ? OPT_WA->step : OPT_WA->begin; \
-	for ( ; LENGTH <= OPT_WA->end ; LENGTH += OPT_WA->step)
-
-	struct walkArray ** array = (void *)&(optarg.shared);
-
-	walking_t len;
-	WALKARRAY_FOREACH_LENGTH(wa_opt, len) {
-		struct timespec t_wa = makeWalkArray(wa_opt->pattern, len, array);
-		logMakeWalkArray(options, *array, &t_wa);
-
-		struct timespec start, stop, elapsed;
-		nsec_t old_avg = 0;
-
-	 	// (send) shared data ready
-		pthread_barrier_wait(&ready);
-		nsec_t timings[wa_opt->repetitions];
-		for (unsigned i = 0; i < wa_opt->repetitions; ++i) {
-			struct timespec t_go, t_finish, t_lap;
-
-			// (receive) threads primed
-			pthread_barrier_wait(&set);
-			clock_gettime(CLOCK_MONOTONIC, &t_go); 
-
-			// (send) timer started
-			pthread_barrier_wait(&go);
-
-			// (receive) threads finished
-			pthread_barrier_wait(&finish);
-			clock_gettime(CLOCK_MONOTONIC, &t_finish);
-
-			// some bookkeeping of timing results
-			t_lap.tv_sec = t_finish.tv_sec - t_go.tv_sec;
-			t_lap.tv_nsec = t_finish.tv_nsec - t_go.tv_nsec;
-			timings[i] = timespecToNsec(&t_lap);
-		}
-
-		freeWalkArray(*array);
-
-		old_avg = logWalkArray(options, timings, old_avg);
-
-		// benchmark instance statistics
-		elapsed.tv_sec = stop.tv_sec - start.tv_sec;
-		elapsed.tv_nsec = stop.tv_nsec - start.tv_nsec;
-
-		double totalbytes = num * wa_opt->repetitions * (double)wa_opt->aaccesses * sizeof(walking_t);
-		double tb_new = totalbytes / (double)timespecToNsec(&elapsed);
-
-		verbose(options,
-				"Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
-				timespecToNsec(&elapsed),
-				timespecToNsec(&elapsed) / (1000 * 1000));
-
-		verbose(options,
-				"Bandwidth: ~%.3lf GiB/s\n", tb_new);
-	}
-
 	// wait for threads to finish and return
 	for (unsigned i = 0; i < num; ++i)
 		pthread_join(allthreads[i], NULL);
@@ -191,15 +129,15 @@ void spawnProcesses(const struct options * const options) {
 		case 0:
 			return;
 		case 1:
-			spawnThreads(options);
+			spawnThreads(options, runWalk);
 			return;
 		default:
 			switch (gn_opt->create) {
 				case TREE:
-					treeSpawn(options);
+					treeSpawn(options, runWalk);
 					break;
 				case LINEAR:
-					linearSpawn(options);
+					linearSpawn(options, runWalk);
 					break;
 			}
 	}
@@ -209,34 +147,109 @@ void spawnProcesses(const struct options * const options) {
  * threaded benchmarks below
  */
 
+struct runWalkSharedData {
+	struct walkArray * array;
+	nsec_t old_avg;
+	nsec_t * timings;
+};
+
+static struct runWalkSharedData * makeRunWalkSharedData(
+		const struct options_walkarray * wa_opt)
+{
+	struct runWalkSharedData * init = malloc(sizeof(struct runWalkSharedData));
+	init->array = NULL;
+	init->old_avg = 0;
+	init->timings = malloc(sizeof(*(init->timings)) * wa_opt->repetitions);
+	return init;
+}
+
+static void freeRunWalkSharedData(struct runWalkSharedData * rwsd) {
+	if (!rwsd)
+		return;
+
+	free(rwsd->timings);
+	free(rwsd);
+}
+
 void * runWalk(void * c) {
-	const struct thread_context * const context = c;
+	struct thread_context * const context = c;
 	const struct options * const options = context->options;
 	const struct options_walkarray * const wa_opt = &(options->walkArray);
 
-	walking_t len;
-	WALKARRAY_FOREACH_LENGTH(wa_opt, len) {
-		// (receive) data ready
+	// local alias for context->shared to prevent cast loitering
+	// XXX note that this acts as a cached value!
+	struct runWalkSharedData * shared = NULL;
+
+	int init_serial_thread = pthread_barrier_wait(context->init);
+	/*- barrier --------------------------------------------------------------*/
+	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)
+		context->shared = makeRunWalkSharedData(wa_opt);
+
+	// time each of the runs of all threads
+	walking_t len = 0 == wa_opt->begin ? wa_opt->step : wa_opt->begin;
+	for ( ; len <= wa_opt->end ; len += wa_opt->step) {
+		struct timespec t_go, t_finish, t_lap;
+		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
+			shared = context->shared;
+			struct timespec t_wa = makeWalkArray(wa_opt->pattern, len, &(shared->array));
+			logMakeWalkArray(options, shared->array, &t_wa);
+		}
 		pthread_barrier_wait(context->ready);
+		/*- barrier --------------------------------------------------------------*/
 
-		struct walkArray * const array = context->shared;
+		shared = context->shared;
+		for (int i = 0; i < 3; ++i)
+			(void)walkArray(shared->array, wa_opt->aaccesses, NULL);
 
-		// warmup run
-		(void)walkArray(array, wa_opt->aaccesses, NULL);
-
+		// run benchmark instance
 		for (size_t i = 0; i < wa_opt->repetitions; ++i) {
-			// (send) primed
 			pthread_barrier_wait(context->set);
+			/*- barrier ------------------------------------------------------------*/
 
-			// (receive) timer started
+			if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)
+				clock_gettime(CLOCK_MONOTONIC, &t_go); 
+
 			pthread_barrier_wait(context->go);
+			/*- barrier ------------------------------------------------------------*/
 
-			walkArray(array, wa_opt->aaccesses, NULL);
+			walkArray(shared->array, wa_opt->aaccesses, NULL);
 
-			// (send) run finished
 			pthread_barrier_wait(context->finish);
+			/*- barrier ------------------------------------------------------------*/
+
+			if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
+				// some bookkeeping of timing results
+				clock_gettime(CLOCK_MONOTONIC, &t_finish);
+				t_lap.tv_sec = t_finish.tv_sec - t_go.tv_sec;
+				t_lap.tv_nsec = t_finish.tv_nsec - t_go.tv_nsec;
+				shared->timings[i] = timespecToNsec(&t_lap);
+			}
+		}
+
+		// benchmark instance cleanup and statistics
+		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
+			freeWalkArray(shared->array);
+
+			shared->old_avg = logWalkArray(options, shared->timings, shared->old_avg);
+
+			nsec_t totalnsec = 0;
+			for (walking_t i = 0; i < wa_opt->repetitions; ++i)
+				totalnsec += shared->timings[i];
+
+			double totalbytes = (double)(sizeof(walking_t) * context->nthreads
+					* wa_opt->repetitions * wa_opt->aaccesses);
+			double tb_new = totalbytes / (double)totalnsec;
+
+			verbose(options,
+					"Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
+					totalnsec, totalnsec / (1000 * 1000));
+
+			verbose(options,
+					"Bandwidth: ~%.3lf GiB/s\n", tb_new);
 		}
 	}
+	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)
+		freeRunWalkSharedData(shared);
 
 	return NULL;
 }

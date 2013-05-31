@@ -9,30 +9,34 @@
 // XXX exit when child creation fails, as test will yield unexpected results
 pid_t spawnChildren_fork(unsigned num);
 
+// function type that can be used to start a pthread with
+typedef void * thread_fn(void *);
+
 // add threads to the current process
 bool spawnChildren_pthread(unsigned num, pthread_t * threads,
 		void * (* start)(void *), void * arg);
 
 // create the desired amount of children all from the same parent
-void linearSpawn(const struct options * const options);
+void linearSpawn(const struct options * const options, thread_fn benchmark);
 
 // create children in a tree-like fashion; i.e. children creating children
 // XXX assumes options.processes > 1
-void treeSpawn(const struct options * const options);
+void treeSpawn(const struct options * const options, thread_fn benchmark);
 
-void spawnThreads(const struct options * const options);
+void spawnThreads(const struct options * const options, thread_fn benchmark);
 
 void spawnProcesses(const struct options * const options);
-
-// function type that can be used to start a pthread with
-typedef void * thread_fn(void *);
 
 // context for a pthread's main function
 struct thread_context {
 	// as defined in options.h
 	const struct options * const options;
+	// number of threads using this context
+	unsigned nthreads;
 	// shared data
 	void * shared;
+	// all threads initialized
+	pthread_barrier_t * init;
 	// shared benchmark data setup ready
 	pthread_barrier_t * ready;
 	// hot threads setup ready (may depend on data)
