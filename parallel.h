@@ -51,7 +51,7 @@ struct thread_context {
 thread_fn runWalk;
 
 // performs the 'streaming' benchmark
-thread_fn runStreaming;
+thread_fn runStream;
 
 // performs the 'flops' benchmark
 thread_fn runFlops;

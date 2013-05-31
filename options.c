@@ -83,6 +83,9 @@ static void set_default_config(config_t * cfg) {
 	static const bool SILENT = false;
 	static const unsigned THREADS = 1;
 
+	static const long long STREAM_STEP = 10 * (1 << 20);
+	static const long long STREAM_END = 100 * (1 << 20);
+
 	config_setting_t *setting;
 	config_setting_t *root;
 	root = config_root_setting(cfg);
@@ -192,11 +195,11 @@ static void set_default_config(config_t * cfg) {
 
 		// maximal array size
 		setting = config_setting_add(array, FLD_STREAMARRAY_ENDLENGTH, CONFIG_TYPE_INT64);
-		config_setting_set_int64(setting, END);
+		config_setting_set_int64(setting, STREAM_END);
 
 		// increment factor
 		setting = config_setting_add(array, FLD_STREAMARRAY_INCREMENT, CONFIG_TYPE_INT64);
-		config_setting_set_int64(setting, STEP);
+		config_setting_set_int64(setting, STREAM_STEP);
 
 		// increment type
 		// (linear adds the increment, exponential multiplies the previous length)

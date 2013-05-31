@@ -129,15 +129,15 @@ void spawnProcesses(const struct options * const options) {
 		case 0:
 			return;
 		case 1:
-			spawnThreads(options, runWalk);
+			spawnThreads(options, runStream);
 			return;
 		default:
 			switch (gn_opt->create) {
 				case TREE:
-					treeSpawn(options, runWalk);
+					treeSpawn(options, runStream);
 					break;
 				case LINEAR:
-					linearSpawn(options, runWalk);
+					linearSpawn(options, runStream);
 					break;
 			}
 	}
@@ -145,8 +145,11 @@ void spawnProcesses(const struct options * const options) {
 
 /*******************************************************************************
  * threaded benchmarks below
- */
+ ******************************************************************************/
 
+/**************
+ * Walk Array *
+ **************/
 struct runWalkSharedData {
 	struct walkArray * array;
 	nsec_t old_avg;
@@ -254,14 +257,105 @@ void * runWalk(void * c) {
 	return NULL;
 }
 
-void * runStreaming(void * c) {
-	const struct thread_context * const context = c;
+/*******************
+ * Streaming Array *
+ *******************/
+struct runStreamSharedData {
+	struct streamArray * array;
+	nsec_t old_avg;
+};
+
+static struct runStreamSharedData * makeRunStreamSharedData(
+		const struct options_streamarray * sa_opt __attribute__((unused)))
+{
+	struct runStreamSharedData * init = malloc(sizeof(struct runStreamSharedData));
+	init->array = NULL;
+	init->old_avg = 0;
+	return init;
+}
+
+static void freeRunStreamSharedData(struct runStreamSharedData * rssd) {
+	if (!rssd)
+		return;
+
+	free(rssd);
+}
+
+
+void * runStream(void * c) {
+	struct thread_context * const context = c;
 	const struct options * const options = context->options;
 	const struct options_streamarray * const sa_opt = &(options->streamArray);
+
+	// local alias for context->shared to prevent cast loitering
+	// XXX note that this acts as a cached value!
+	struct runStreamSharedData * shared = NULL;
+
+	int init_serial_thread = pthread_barrier_wait(context->init);
+	/*- barrier --------------------------------------------------------------*/
+	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)
+		context->shared = makeRunStreamSharedData(sa_opt);
+
+	// time each of the runs of all threads
+	size_t len = 0 == sa_opt->begin ? sa_opt->step : sa_opt->begin;
+	for ( ; len <= sa_opt->end ; len += sa_opt->step) {
+		struct timespec t_go, t_finish, t_lap;
+		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
+			shared = context->shared;
+			makeStreamArray(I64, len, &(shared->array));
+		}
+		pthread_barrier_wait(context->ready);
+		/*- barrier --------------------------------------------------------------*/
+
+		shared = context->shared;
+
+		// run benchmark instance
+		pthread_barrier_wait(context->set);
+		/*- barrier ------------------------------------------------------------*/
+
+		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)
+			clock_gettime(CLOCK_MONOTONIC, &t_go); 
+
+		pthread_barrier_wait(context->go);
+		/*- barrier ------------------------------------------------------------*/
+
+		streamArray(shared->array);
+
+		pthread_barrier_wait(context->finish);
+		/*- barrier ------------------------------------------------------------*/
+
+		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
+			// some bookkeeping of timing results
+			clock_gettime(CLOCK_MONOTONIC, &t_finish);
+
+			freeStreamArray(shared->array);
+
+			t_lap.tv_sec = t_finish.tv_sec - t_go.tv_sec;
+			t_lap.tv_nsec = t_finish.tv_nsec - t_go.tv_nsec;
+			nsec_t totalnsec = timespecToNsec(&t_lap);
+
+			// TODO: scale the amount of bytes fetched per thread
+			// TODO: scale with requested widths
+			double totalbytes = (double)(64 * len);
+			double tb_new = totalbytes / (double)totalnsec;
+
+			verbose(options,
+					"Array size: %zd MiB | Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
+					len * 8 / (1024 * 1024), totalnsec, totalnsec / (1000 * 1000));
+
+			verbose(options,
+					"Bandwidth: ~%.3lf GiB/s\n", tb_new);
+		}
+	}
+	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)
+		freeRunStreamSharedData(shared);
 
 	return NULL;
 }
 
+/***************
+ * Flops Array *
+ ***************/
 void * runFlops(void * c) {
 	const struct thread_context * const context = c;
 	const struct options * const options = context->options;
