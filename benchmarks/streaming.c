@@ -107,24 +107,33 @@ void freeStreamArray(struct streamArray * array) {
 	free(array);
 }
 
+#define DEF_COPY_STREAM(NAME,ELTYPE)\
+	static void NAME(\
+			ELTYPE * restrict out,\
+			ELTYPE * restrict in,\
+			long len) {\
+	for (long idx = 0; idx < len; ++idx)\
+		out[idx] = in[idx];\
+	}
+
+DEF_COPY_STREAM(streami8,int8_t)
+DEF_COPY_STREAM(streami16,int16_t)
+DEF_COPY_STREAM(streami32,int32_t)
+DEF_COPY_STREAM(streami64,int64_t)
+
 void streamArray(struct streamArray * array) {
-#define DO_STREAM(ARRAY, UTYPE) do { \
-	long ds_idx; \
-	for (ds_idx = 0; ds_idx < ARRAY->len; ++ds_idx) { \
-		ARRAY->out.UTYPE[ds_idx] = ARRAY->in.UTYPE[ds_idx]; \
-	}} while(0)
 	switch (array->width) {
 		case I8:
-			DO_STREAM(array, i8);
+			streami8(array->out.i8, array->in.i8, array->len);
 			break;
 		case I16:
-			DO_STREAM(array, i16);
+			streami16(array->out.i16, array->in.i16, array->len);
 			break;
 		case I32:
-			DO_STREAM(array, i32);
+			streami32(array->out.i32, array->in.i32, array->len);
 			break;
 		case I64:
-			DO_STREAM(array, i64);
+			streami64(array->out.i64, array->in.i64, array->len);
 			break;
 	}
 }
