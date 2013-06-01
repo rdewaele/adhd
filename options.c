@@ -70,7 +70,7 @@ static const char FLD_FLOPSARRAY_LENGTH[] = "length";
 static void set_default_config(config_t * cfg) {
 	static const unsigned AACCESSES = 4 * 1024 * 1024;
 	static const unsigned BEGIN = BEGIN_INIT;
-	static const char SPAWN[] = "tree";
+	static const char SPAWN[] = "linear";
 	static const long long END = END_INIT;
 	static const float FREQUENCY = 1;
 	static const bool LOGGING = false;
