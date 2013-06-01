@@ -154,3 +154,34 @@ void memcpyArray(struct streamArray * array) {
 			break;
 	}
 }
+
+#define DEF_STREAM_42(NAME,ELTYPE)\
+	static void NAME(\
+			ELTYPE * restrict out,\
+			long len) {\
+		register const ELTYPE src = 42;\
+	for (long idx = 0; idx < len; ++idx)\
+		out[idx] = src;\
+	}
+
+DEF_STREAM_42(stream42i8,int8_t)
+DEF_STREAM_42(stream42i16,int16_t)
+DEF_STREAM_42(stream42i32,int32_t)
+DEF_STREAM_42(stream42i64,int64_t)
+
+void fillArray(struct streamArray * array) {
+	switch (array->width) {
+		case I8:
+			stream42i8(array->in.i8, array->len);
+			break;
+		case I16:
+			stream42i16(array->in.i16, array->len);
+			break;
+		case I32:
+			stream42i32(array->in.i32, array->len);
+			break;
+		case I64:
+			stream42i64(array->in.i64, array->len);
+			break;
+	}
+}

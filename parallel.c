@@ -320,8 +320,9 @@ void * runStream(void * c) {
 		/*- barrier ------------------------------------------------------------*/
 
 		// TODO
-		streamArray(shared->array);
+		//streamArray(shared->array);
 		//memcpyArray(shared->array);
+		fillArray(shared->array);
 
 		pthread_barrier_wait(context->finish);
 		/*- barrier ------------------------------------------------------------*/
