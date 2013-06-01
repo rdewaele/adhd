@@ -3,6 +3,7 @@
 #include "options.h"
 
 #include <pthread.h>
+#include <semaphore.h>
 #include <unistd.h>
 
 // create new arraywalk child processes
@@ -17,11 +18,11 @@ bool spawnChildren_pthread(unsigned num, pthread_t * threads,
 		void * (* start)(void *), void * arg);
 
 // create the desired amount of children all from the same parent
-void linearSpawn(const struct options * const options, thread_fn benchmark);
+void linearSpawn(const struct options * const options, thread_fn benchmark, sem_t * syncstart);
 
 // create children in a tree-like fashion; i.e. children creating children
 // XXX assumes options.processes > 1
-void treeSpawn(const struct options * const options, thread_fn benchmark);
+void treeSpawn(const struct options * const options, thread_fn benchmark, sem_t * syncstart);
 
 void spawnThreads(const struct options * const options, thread_fn benchmark);
 

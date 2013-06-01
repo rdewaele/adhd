@@ -5,7 +5,10 @@
 
 #include <assert.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <pthread.h>
+#include <semaphore.h>
+#include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
 
@@ -34,18 +37,21 @@ stopSpawn:
 }
 
 // create the desired amount of children all from the same parent
-void linearSpawn(const struct options * const options, thread_fn benchmark) {
+void linearSpawn(const struct options * const options, thread_fn benchmark, sem_t * syncstart) {
 	unsigned nchildren = options->generic.processes;
-	if(0 == spawnChildren_fork(nchildren))
+	if (0 == spawnChildren_fork(nchildren)) {
+		sem_wait(syncstart);
 		spawnThreads(options, benchmark);
-	else
-		while (nchildren--)
-			wait(NULL);
+	}
+	else {
+		for (unsigned i = 0; i < nchildren; ++i) { sem_post(syncstart); }
+		for (unsigned i = 0; i < nchildren; ++i) { wait(NULL); }
+	}
 }
 
 // create children in a tree-like fashion; i.e. children creating children
 // XXX assumes options.processes > 1
-void treeSpawn(const struct options * const options, thread_fn benchmark) {
+void treeSpawn(const struct options * const options, thread_fn benchmark, sem_t * syncstart) {
 	// TODO: maybe introduce support for configurable branching factors
 	unsigned todo = options->generic.processes - 1; // initial process will also calculate
 	unsigned nchildren = 0;
@@ -132,13 +138,17 @@ void spawnProcesses(const struct options * const options) {
 			spawnThreads(options, runStream);
 			return;
 		default:
-			switch (gn_opt->create) {
-				case TREE:
-					treeSpawn(options, runStream);
-					break;
-				case LINEAR:
-					linearSpawn(options, runStream);
-					break;
+			{
+				sem_t * syncstart = sem_open("/adhd_syncstart", O_CREAT | O_RDWR, S_IRWXU);
+				sem_init(syncstart, !0, 0);
+				switch (gn_opt->create) {
+					case TREE:
+						treeSpawn(options, runStream, syncstart);
+						break;
+					case LINEAR:
+						linearSpawn(options, runStream, syncstart);
+						break;
+				}
 			}
 	}
 }
@@ -323,6 +333,7 @@ void * runStream(void * c) {
 		//streamArray(shared->array);
 		//memcpyArray(shared->array);
 		fillArray(shared->array);
+		//memsetArray(shared->array);
 
 		pthread_barrier_wait(context->finish);
 		/*- barrier ------------------------------------------------------------*/

@@ -32,3 +32,5 @@ void streamArray(struct streamArray * array);
 void memcpyArray(struct streamArray * array);
 
 void fillArray(struct streamArray * array);
+
+void memsetArray(struct streamArray * array);

@@ -167,7 +167,19 @@ void memcpyArray(struct streamArray * array) {
 DEF_STREAM_42(stream42i8,int8_t)
 DEF_STREAM_42(stream42i16,int16_t)
 DEF_STREAM_42(stream42i32,int32_t)
-DEF_STREAM_42(stream42i64,int64_t)
+//DEF_STREAM_42(stream42i64,int64_t)
+
+void stream42i64(
+			int64_t * restrict out,
+			long len)
+{
+	const int64_t src = 42;
+#pragma vector nontemporal
+	for (long idx = 0; idx < len; idx++) {
+		out[idx] = src;
+	}
+} 
+
 
 void fillArray(struct streamArray * array) {
 	switch (array->width) {
@@ -182,6 +194,24 @@ void fillArray(struct streamArray * array) {
 			break;
 		case I64:
 			stream42i64(array->in.i64, array->len);
+			break;
+	}
+}
+
+void memsetArray(struct streamArray * array) {
+	const int src = 42;
+	switch (array->width) {
+		case I8:
+			memset(array->out.i8, src, array->size);
+			break;
+		case I16:
+			memset(array->out.i16, src, array->size);
+			break;
+		case I32:
+			memset(array->out.i32, src, array->size);
+			break;
+		case I64:
+			memset(array->out.i64, src, array->size);
 			break;
 	}
 }
