@@ -24,12 +24,16 @@ struct options_generic {
 	bool logging;
 	// base filename for csv files (pid will be appended)
 	char csvlogname[NAME_MAX];
-	// number of processes to run in parallel
-	unsigned processes;
+	// number of processes to run in parallel: begin
+	unsigned processes_begin;
+	// number of processes to run in parallel: end
+	unsigned processes_end;
 	// silent mode
 	bool silent;
-	// number of threads to run per process
-	unsigned threads;
+	// number of threads to run per process: begin
+	unsigned threads_begin;
+	// number of threads to run per process: end
+	unsigned threads_end;
 };
 
 struct options_walkarray {

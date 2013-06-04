@@ -174,7 +174,10 @@ void stream42i64(
 			long len)
 {
 	const int64_t src = 42;
+#ifdef __ICC
+#pragma message "requesting non-temporal for stream42i64"
 #pragma vector nontemporal
+#endif
 	for (long idx = 0; idx < len; idx++) {
 		out[idx] = src;
 	}

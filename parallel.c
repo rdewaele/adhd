@@ -8,6 +8,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <stdio.h>
 #include <sys/stat.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -38,7 +39,7 @@ stopSpawn:
 
 // create the desired amount of children all from the same parent
 void linearSpawn(const struct options * const options, thread_fn benchmark, sem_t * syncstart) {
-	unsigned nchildren = options->generic.processes;
+	unsigned nchildren = options->generic.processes_begin;
 	if (0 == spawnChildren_fork(nchildren)) {
 		sem_wait(syncstart);
 		spawnThreads(options, benchmark);
@@ -49,11 +50,12 @@ void linearSpawn(const struct options * const options, thread_fn benchmark, sem_
 	}
 }
 
+#if 0 // temporarily disabled until development time can be spent here
 // create children in a tree-like fashion; i.e. children creating children
 // XXX assumes options.processes > 1
 void treeSpawn(const struct options * const options, thread_fn benchmark, sem_t * syncstart) {
 	// TODO: maybe introduce support for configurable branching factors
-	unsigned todo = options->generic.processes - 1; // initial process will also calculate
+	unsigned todo = options->generic.processes_begin - 1; // initial process will also calculate
 	unsigned nchildren = 0;
 	do {
 		switch ((nchildren = todo % 2)) {
@@ -79,12 +81,13 @@ void treeSpawn(const struct options * const options, thread_fn benchmark, sem_t 
 	while (nchildren--)
 		wait(NULL);
 }
+#endif // temporarily disabled until development time can be spent here
 
 // TODO: error correctness
 void spawnThreads(const struct options * const options, thread_fn benchmark) {
 	const struct options_generic * const gn_opt = &(options->generic);
 
-	unsigned num = gn_opt->threads;
+	unsigned num = gn_opt->threads_begin;
 	pthread_t allthreads[num];
 	pthread_barrier_t init, ready, set, go, finish;
 
@@ -131,7 +134,7 @@ void spawnThreads(const struct options * const options, thread_fn benchmark) {
 void spawnProcesses(const struct options * const options) {
 	const struct options_generic * const gn_opt = &(options->generic);
 
-	switch (gn_opt->processes) {
+	switch (gn_opt->processes_begin) {
 		case 0:
 			return;
 		case 1:
@@ -143,7 +146,8 @@ void spawnProcesses(const struct options * const options) {
 				sem_init(syncstart, !0, 0);
 				switch (gn_opt->create) {
 					case TREE:
-						treeSpawn(options, runFlops, syncstart);
+						//treeSpawn(options, runFlops, syncstart);
+						fprintf(stderr, "tree spawn currently unmaintaned, please check back later.\n");
 						break;
 					case LINEAR:
 						linearSpawn(options, runFlops, syncstart);

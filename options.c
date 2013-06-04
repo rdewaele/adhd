@@ -42,9 +42,11 @@ static const char FLD_GENERIC_GPU_FREQUENCY[] = "CPU_frequency";
 static const char FLD_GENERIC_LOGGING[] = "logging";
 static const char FLD_GENERIC_LOGFILE[] = "logfile";
 static const char FLD_GENERIC_SPAWN[] = "spawn";
-static const char FLD_GENERIC_PROCESSES[] = "processes";
 static const char FLD_GENERIC_SILENT[] = "silent";
-static const char FLD_GENERIC_THREADS[] = "threads";
+static const char FLD_GENERIC_PROCESSES_BEGIN[] = "processes begin";
+static const char FLD_GENERIC_PROCESSES_END[] = "processes end";
+static const char FLD_GENERIC_THREADS_BEGIN[] = "threads begin";
+static const char FLD_GENERIC_THREADS_END[] = "threads end";
 
 static const char FLD_PROGRAMS_GROUP[] = "programs";
 
@@ -138,14 +140,22 @@ static void set_default_config(config_t * cfg) {
 		setting = config_setting_add(generic, FLD_GENERIC_SPAWN, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, SPAWN);
 
-		// number of processes to run
-		// TODO: just like arrays we could have min/max and a linear or exponential increment
-		setting = config_setting_add(generic, FLD_GENERIC_PROCESSES, CONFIG_TYPE_INT64);
+		// number of processes to run: begin
+		// TODO: just like arrays we could have a linear or exponential increment
+		setting = config_setting_add(generic, FLD_GENERIC_PROCESSES_BEGIN, CONFIG_TYPE_INT64);
 		config_setting_set_int64(setting, PROCESSES);
 
-		// number of threads per process to run
-		// TODO: just like arrays we could have min/max and a linear or exponential increment
-		setting = config_setting_add(generic, FLD_GENERIC_THREADS, CONFIG_TYPE_INT64);
+		// number of processes to run: end
+		setting = config_setting_add(generic, FLD_GENERIC_PROCESSES_END, CONFIG_TYPE_INT64);
+		config_setting_set_int64(setting, PROCESSES);
+
+		// number of threads per process to run: begin
+		// TODO: just like arrays we could have a linear or exponential increment
+		setting = config_setting_add(generic, FLD_GENERIC_THREADS_BEGIN, CONFIG_TYPE_INT64);
+		config_setting_set_int64(setting, THREADS);
+
+		// number of threads per process to run: end
+		setting = config_setting_add(generic, FLD_GENERIC_THREADS_END, CONFIG_TYPE_INT64);
 		config_setting_set_int64(setting, THREADS);
 
 		// silent mode
@@ -257,7 +267,7 @@ static void config2options(const config_t * config, struct options * options) {
 		double frequency;
 		int logging, silent;
 		char logfile[NAME_MAX], create[NAME_MAX];
-		long long processes, threads;
+		long long processes_begin, processes_end, threads_begin, threads_end;
 
 		config_setting_t * generic = config_lookup(config, FLD_GENERIC_GROUP);
 		config_setting_lookup_float(generic, FLD_GENERIC_GPU_FREQUENCY, &frequency);
@@ -266,8 +276,10 @@ static void config2options(const config_t * config, struct options * options) {
 				config_setting_get_member(generic, FLD_GENERIC_LOGFILE), NAME_MAX);
 		c2o_strncpy(create,
 				config_setting_get_member(generic, FLD_GENERIC_SPAWN), NAME_MAX);
-		config_setting_lookup_int64(generic, FLD_GENERIC_PROCESSES, &processes);
-		config_setting_lookup_int64(generic, FLD_GENERIC_THREADS, &threads);
+		config_setting_lookup_int64(generic, FLD_GENERIC_PROCESSES_BEGIN, &processes_begin);
+		config_setting_lookup_int64(generic, FLD_GENERIC_PROCESSES_END, &processes_end);
+		config_setting_lookup_int64(generic, FLD_GENERIC_THREADS_BEGIN, &threads_begin);
+		config_setting_lookup_int64(generic, FLD_GENERIC_THREADS_END, &threads_end);
 		config_setting_lookup_bool(generic, FLD_GENERIC_SILENT, &silent);
 
 		gn_opt = (struct options_generic) {
@@ -275,9 +287,11 @@ static void config2options(const config_t * config, struct options * options) {
 				frequency,
 				logging,
 				"", // XXX strncpy ! (log filename)
-				(unsigned)processes,
+				(unsigned)processes_begin,
+				(unsigned)processes_end,
 				silent,
-				(unsigned)threads
+				(unsigned)threads_begin,
+				(unsigned)threads_end
 		};
 		strncpy(gn_opt.csvlogname, logfile, NAME_MAX);
 	}
@@ -374,16 +388,20 @@ void options_generic_print(
 			"%sCPU frequency = %lf;\n"
 			"%sCSV logging = %s;\n"
 			"%sbasename for CSV logfiles = %s;\n"
-			"%sprocesses = %u;\n"
-			"%sthreads = %u;\n"
+			"%sprocesses begin = %u;\n"
+			"%sprocesses end = %u;\n"
+			"%sthreads begin = %u;\n"
+			"%sthreads end = %u;\n"
 			"%ssilent mode = %s;\n"
 			,
 			prefix, spawn_typeToString(gn_opt->create),
 			prefix, gn_opt->frequency,
 			prefix, bool2onoff(gn_opt->logging),
 			prefix, gn_opt->csvlogname,
-			prefix, gn_opt->processes,
-			prefix, gn_opt->threads,
+			prefix, gn_opt->processes_begin,
+			prefix, gn_opt->processes_end,
+			prefix, gn_opt->threads_begin,
+			prefix, gn_opt->threads_end,
 			prefix, bool2onoff(gn_opt->silent)
 			);
 }
