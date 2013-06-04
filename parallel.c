@@ -182,6 +182,11 @@ void spawnProcesses(const struct options * const options) {
 			linearSpawn(options, runFlops, syncstart);
 			break;
 	}
+	if (0 != sem_destroy(syncstart))
+		perror(NULL);
+	if (0 != sem_close(syncstart))
+		perror(NULL);
+	verbose(options, "Finished!\n");
 }
 
 /*******************************************************************************
@@ -472,8 +477,6 @@ void * runFlops(void * c) {
 			// some bookkeeping of timing results
 			clock_gettime(CLOCK_MONOTONIC, &t_finish);
 
-			freeFlopsArray(shared->array);
-
 			t_lap.tv_sec = t_finish.tv_sec - t_go.tv_sec;
 			t_lap.tv_nsec = t_finish.tv_nsec - t_go.tv_nsec;
 			nsec_t totalnsec = timespecToNsec(&t_lap);
@@ -498,6 +501,8 @@ void * runFlops(void * c) {
 					"Bandwidth: ~%.3lf GiB/s\n",
 					(double)fraction *
 					(double)shared->array->size / (double)totalnsec);
+
+			freeFlopsArray(shared->array);
 		}
 	}
 	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {

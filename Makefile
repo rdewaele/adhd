@@ -52,7 +52,7 @@ analyze:
 	clang --analyze $(SOURCES)
 
 valgrind: $(PROGRAM) $(VALGRIND_CONF)
-	valgrind -v --leak-check=full ./$< -i -c $(VALGRIND_CONF)
+	valgrind -v --leak-check=full --show-reachable=yes ./$< -i -c $(VALGRIND_CONF)
 
 .PHONY: clean analyze
 
