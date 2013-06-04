@@ -101,41 +101,90 @@ void freeFlopsArray(struct flopsArray * array) {
 	free(array);
 }
 
-typedef void fvec_fn(const int, float * restrict, float * restrict, float * restrict);
-typedef void dvec_fn(const int, double * restrict, double * restrict, double * restrict);
+float flops_madd16(float init, const long iterations) {
+	float a[] = {init, init + 2, init + 4, init + 8};
+	const float c = 4.2f;
+	const float x = 0.9f;
+	for (long iter = 0; iter < iterations; ++iter) {
+		a[0] = a[0] * x + c;
+		a[1] = a[1] * x + c;
+		a[2] = a[2] * x + c;
+		a[3] = a[3] * x + c;
+
+		a[0] = a[0] * x + c;
+		a[1] = a[1] * x + c;
+		a[2] = a[2] * x + c;
+		a[3] = a[3] * x + c;
+
+		a[0] = a[0] * x + c;
+		a[1] = a[1] * x + c;
+		a[2] = a[2] * x + c;
+		a[3] = a[3] * x + c;
+
+		a[0] = a[0] * x + c;
+		a[1] = a[1] * x + c;
+		a[2] = a[2] * x + c;
+		a[3] = a[3] * x + c;
+	}
+
+	return a[0] + a[1] + a[2] + a[3];
+}
+
+typedef float fvec_fn(const int, float * restrict, const long);
+typedef double dvec_fn(const int, double * restrict, const long);
+
+static const float fc = 4.2f;
+static const float fx = 0.9f;
+static const double dc = 4.2;
+static const double dx = 0.9;
 
 // for some currently unknown reason, icc refrains from vectorizing this loop
 // when length is of unsigned type; adding the ivdep pragma is another
 // solution to this problem, which allows unsigned length ... ehm ... ?
-#define DEF_MAP_FLOP(NAME,FT,OP)\
-	static void NAME (const int length,\
-			FT * restrict dst,\
-			FT * restrict srcA,\
-			FT * restrict srcB) {\
-		for (int idx = 0; idx < length; ++idx) {\
-			dst[idx] = srcA[idx] OP srcB[idx];\
-		}\
-	}
+static float fvec_add(const int len, float * restrict src, const long iterations) {
+	for (long iter = 0; iter < iterations; ++iter)
+		for (int idx = 0; idx < len; ++idx)
+			src[idx] = src[idx] + fc;
+	return *src;
+}
 
-DEF_MAP_FLOP(fvec_add,float,+)
-DEF_MAP_FLOP(dvec_add,double,+)
-DEF_MAP_FLOP(fvec_mul,float,*)
-DEF_MAP_FLOP(dvec_mul,double,*)
+static float fvec_mul(const int len, float * restrict src, const long iterations) {
+	for (long iter = 0; iter < iterations; ++iter)
+		for (int idx = 0; idx < len; ++idx)
+			src[idx] = src[idx] * fc;
+	return *src;
+}
 
-#define DEF_MADD(NAME,FT)\
-	static void NAME (const int length,\
-			FT * restrict dst,\
-			FT * restrict srcA,\
-			FT * restrict srcB) {\
-		for (int idx = 0; idx < length; ++idx) {\
-			dst[idx] = dst[idx] * srcA[idx] + srcB[idx];\
-		}\
-	}
+static float fvec_madd(const int len, float * restrict src, const long iterations) {
+	for (long iter = 0; iter < iterations; ++iter)
+		for (int idx = 0; idx < len; ++idx)
+			src[idx] = src[idx] * fx + fc;
+	return *src;
+}
 
-DEF_MADD(fvec_madd,float)
-DEF_MADD(dvec_madd,double)
+static double dvec_add(const int len, double * restrict src, const long iterations) {
+	for (long iter = 0; iter < iterations; ++iter)
+		for (int idx = 0; idx < len; ++idx)
+			src[idx] = src[idx] + dc;
+	return *src;
+}
 
-void flopsArray(enum flop_t operation, struct flopsArray * array) {
+static double dvec_mul(const int len, double * restrict src, const long iterations) {
+	for (long iter = 0; iter < iterations; ++iter)
+		for (int idx = 0; idx < len; ++idx)
+			src[idx] = src[idx] * dc;
+	return *src;
+}
+
+static double dvec_madd(const int len, double * restrict src, const long iterations) {
+	for (long iter = 0; iter < iterations; ++iter)
+		for (int idx = 0; idx < len; ++idx)
+			src[idx] = src[idx] * dx + dc;
+	return *src;
+}
+
+double flopsArray(enum flop_t operation, struct flopsArray * array, unsigned iterations) {
+	double result = 0;
 	switch (array->precision) {
 		case SINGLE:
 			{
@@ -154,7 +203,7 @@ void flopsArray(enum flop_t operation, struct flopsArray * array) {
 						fprintf(stderr, "Internal error: unknown operation type in %s\n", __func__);
 						exit(EXIT_FAILURE);
 				}
-				func(array->len, array->vec.sp.data, array->vec.sp.scale, array->vec.sp.offset);
+				result = func(array->len, array->vec.sp.data, iterations);
 			}
 			break;
 		case DOUBLE:
@@ -174,8 +223,9 @@ void flopsArray(enum flop_t operation, struct flopsArray * array) {
 						fprintf(stderr, "Internal error: unknown operation type in %s\n", __func__);
 						exit(EXIT_FAILURE);
 				}
-				func(array->len, array->vec.dp.data, array->vec.dp.scale, array->vec.dp.offset);
+				result = func(array->len, array->vec.dp.data, iterations);
 			}
 			break;
 	}
+	return result;
 }

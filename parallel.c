@@ -417,6 +417,7 @@ void * runFlops(void * c) {
 		/*- barrier --------------------------------------------------------------*/
 
 		shared = context->shared;
+		flopsArray(MADD, shared->array, 1 + fa_opt->calculations / len);
 
 		// run benchmark instance
 		pthread_barrier_wait(context->set);
@@ -429,7 +430,8 @@ void * runFlops(void * c) {
 		/*- barrier ------------------------------------------------------------*/
 
 		// TODO
-		flopsArray(MADD, shared->array);
+		flopsArray(ADD, shared->array, fa_opt->calculations / len);
+		//flops_madd16(42, fa_opt->calculations);
 
 		pthread_barrier_wait(context->finish);
 		/*- barrier ------------------------------------------------------------*/
@@ -447,11 +449,15 @@ void * runFlops(void * c) {
 			// TODO: scale the amount of bytes fetched per thread
 
 			verbose(options,
+					"Iterations: %u\n", fa_opt->calculations / len);
+
+			verbose(options,
 					"Array size: %zd MiB | Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
 					shared->array->size / (1024 * 1024), totalnsec, totalnsec / (1000 * 1000));
 
 			verbose(options,
 					"Bandwidth: ~%.3lf GiB/s\n",
+					(double)(fa_opt->calculations / len) *
 					(double)shared->array->size / (double)totalnsec);
 		}
 	}

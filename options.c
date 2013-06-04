@@ -43,10 +43,10 @@ static const char FLD_GENERIC_LOGGING[] = "logging";
 static const char FLD_GENERIC_LOGFILE[] = "logfile";
 static const char FLD_GENERIC_SPAWN[] = "spawn";
 static const char FLD_GENERIC_SILENT[] = "silent";
-static const char FLD_GENERIC_PROCESSES_BEGIN[] = "processes begin";
-static const char FLD_GENERIC_PROCESSES_END[] = "processes end";
-static const char FLD_GENERIC_THREADS_BEGIN[] = "threads begin";
-static const char FLD_GENERIC_THREADS_END[] = "threads end";
+static const char FLD_GENERIC_PROCESSES_BEGIN[] = "processes_begin";
+static const char FLD_GENERIC_PROCESSES_END[] = "processes_end";
+static const char FLD_GENERIC_THREADS_BEGIN[] = "threads_begin";
+static const char FLD_GENERIC_THREADS_END[] = "threads_end";
 
 static const char FLD_PROGRAMS_GROUP[] = "programs";
 
@@ -70,6 +70,7 @@ static const char FLD_FLOPSARRAY_BEGINLENGTH[] = "beginlength";
 static const char FLD_FLOPSARRAY_ENDLENGTH[] = "endlength";
 static const char FLD_FLOPSARRAY_INCREMENT[] = "increment";
 static const char FLD_FLOPSARRAY_SCALING[] = "scaling";
+static const char FLD_FLOPSARRAY_CALCULATIONS[] = "calculations";
 
 // load the default configuration in cfg
 static void set_default_config(config_t * cfg) {
@@ -91,8 +92,9 @@ static void set_default_config(config_t * cfg) {
 	static const long long STREAM_STEP = 10 * (1 << 20);
 	static const long long STREAM_END = 100 * (1 << 20);
 
-	static const long long FLOPS_STEP = 10 * (1 << 20);
-	static const long long FLOPS_END = 100 * (1 << 20);
+	static const long long FLOPS_STEP = 10 * (1 << 10);
+	static const long long FLOPS_END = 1 * (1 << 20);
+	static const long long FLOPS_CALCULATIONS = 1000 * 1000 * 1000;
 
 	config_setting_t *setting;
 	config_setting_t *root;
@@ -244,6 +246,10 @@ static void set_default_config(config_t * cfg) {
 		// (linear adds the increment, exponential multiplies the previous length)
 		setting = config_setting_add(array, FLD_FLOPSARRAY_SCALING, CONFIG_TYPE_STRING);
 		config_setting_set_string(setting, SCALING);
+
+		// number of calculations to perform
+		setting = config_setting_add(array, FLD_FLOPSARRAY_CALCULATIONS, CONFIG_TYPE_INT64);
+		config_setting_set_int64(setting, FLOPS_CALCULATIONS);
 	}
 }
 
@@ -346,19 +352,21 @@ static void config2options(const config_t * config, struct options * options) {
 	// flops array group
 	struct options_flopsarray fa_opt;
 	{
-		long long begin, end, step;
+		long long begin, end, step, calculations;
 		char scaling[NAME_MAX];
 
 		config_setting_t * array = config_lookup(config, FLD_FLOPSARRAY_GROUP);
 		config_setting_lookup_int64(array, FLD_FLOPSARRAY_BEGINLENGTH, &begin);
 		config_setting_lookup_int64(array, FLD_FLOPSARRAY_ENDLENGTH, &end);
 		config_setting_lookup_int64(array, FLD_FLOPSARRAY_INCREMENT, &step);
+		config_setting_lookup_int64(array, FLD_FLOPSARRAY_CALCULATIONS, &calculations);
 		c2o_strncpy(scaling,
 				config_setting_get_member(array, FLD_FLOPSARRAY_SCALING), NAME_MAX);
 
 		fa_opt = (struct options_flopsarray) {
 			(unsigned)begin,
 				(unsigned)end,
+				(unsigned)calculations,
 				(unsigned)step
 		};
 	}
@@ -453,10 +461,12 @@ void options_flopsarray_print(
 			"%sbegin size = %u;\n"
 			"%send size = %u;\n"
 			"%sstep size = %u;\n"
+			"%scalculations = %u;\n"
 			,
 			prefix, fa_opt->begin,
 			prefix, fa_opt->end,
-			prefix, fa_opt->step
+			prefix, fa_opt->step,
+			prefix, fa_opt->calculations
 			);
 }
 

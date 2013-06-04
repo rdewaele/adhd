@@ -65,6 +65,8 @@ struct options_flopsarray {
 	unsigned begin;
 	// upper size limit for the benchmark's array
 	unsigned end;
+	// number of calculations to perform in tests
+	unsigned calculations;
 	// the test array grows linearly by this amount (determines granularity)
 	unsigned step;
 };
