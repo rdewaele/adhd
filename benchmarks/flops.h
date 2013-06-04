@@ -30,6 +30,6 @@ void makeFlopsArray(
 
 void freeFlopsArray(struct flopsArray * array);
 
-void flopsArray(enum flop_t operation, struct flopsArray * array, unsigned calculations);
+double flopsArray(enum flop_t operation, struct flopsArray * array, unsigned long long calculations);
 
-void flops_madd16(float init, const long iterations);
+float flops_madd16(float init, const long long iterations);

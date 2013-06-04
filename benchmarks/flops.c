@@ -101,7 +101,7 @@ void freeFlopsArray(struct flopsArray * array) {
 	free(array);
 }
 
-float flops_madd16(float init, const long iterations) {
+float flops_madd16(float init, const long long iterations) {
 	float a[] = {init, init + 2, init + 4, init + 8};
 	const float c = 4.2f;
 	const float x = 0.9f;
@@ -130,8 +130,8 @@ float flops_madd16(float init, const long iterations) {
 	return a[0] + a[1] + a[2] + a[3];
 }
 
-typedef float fvec_fn(const int, float * restrict, const long);
-typedef double dvec_fn(const int, double * restrict, const long);
+typedef float fvec_fn(const int, float * restrict, const long long);
+typedef double dvec_fn(const int, double * restrict, const long long);
 
 static const float fc = 4.2f;
 static const float fx = 0.9f;
@@ -141,49 +141,49 @@ static const double dx = 0.9;
 // for some currently unknown reason, icc refrains from vectorizing this loop
 // when length is of unsigned type; adding the ivdep pragma is another
 // solution to this problem, which allows unsigned length ... ehm ... ?
-static float fvec_add(const int len, float * restrict src, const long iterations) {
+static float fvec_add(const int len, float * restrict src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] + fc;
 	return *src;
 }
 
-static float fvec_mul(const int len, float * restrict src, const long iterations) {
+static float fvec_mul(const int len, float * restrict src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] * fc;
 	return *src;
 }
 
-static float fvec_madd(const int len, float * restrict src, const long iterations) {
+static float fvec_madd(const int len, float * restrict src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] * fx + fc;
 	return *src;
 }
 
-static double dvec_add(const int len, double * restrict src, const long iterations) {
+static double dvec_add(const int len, double * restrict src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] + dc;
 	return *src;
 }
 
-static double dvec_mul(const int len, double * restrict src, const long iterations) {
+static double dvec_mul(const int len, double * restrict src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] * dc;
 	return *src;
 }
 
-static double dvec_madd(const int len, double * restrict src, const long iterations) {
+static double dvec_madd(const int len, double * restrict src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] * dx + dc;
 	return *src;
 }
 
-double flopsArray(enum flop_t operation, struct flopsArray * array, unsigned iterations) {
+double flopsArray(enum flop_t operation, struct flopsArray * array, unsigned long long iterations) {
 	double result = 0;
 	switch (array->precision) {
 		case SINGLE:
@@ -203,7 +203,7 @@ double flopsArray(enum flop_t operation, struct flopsArray * array, unsigned ite
 						fprintf(stderr, "Internal error: unknown operation type in %s\n", __func__);
 						exit(EXIT_FAILURE);
 				}
-				result = func(array->len, array->vec.sp.data, iterations);
+				result = func(array->len, array->vec.sp.data, (long long)iterations);
 			}
 			break;
 		case DOUBLE:
@@ -223,7 +223,7 @@ double flopsArray(enum flop_t operation, struct flopsArray * array, unsigned ite
 						fprintf(stderr, "Internal error: unknown operation type in %s\n", __func__);
 						exit(EXIT_FAILURE);
 				}
-				result = func(array->len, array->vec.dp.data, iterations);
+				result = func(array->len, array->vec.dp.data, (long long)iterations);
 			}
 			break;
 	}

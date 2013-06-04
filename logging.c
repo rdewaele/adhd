@@ -30,7 +30,7 @@ void verbose(const struct options * options, const char *format, ...) {
 	va_start(args, format);
 
 	if(!options->generic.silent)
-		vprintf(format, args);
+		vfprintf(stdout, format, args);
 
 	va_end(args);
 }

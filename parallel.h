@@ -1,6 +1,7 @@
 #pragma once
 
 #include "options.h"
+#include "logging.h"
 
 #include <pthread.h>
 #include <semaphore.h>
@@ -24,7 +25,7 @@ void linearSpawn(const struct options * const options, thread_fn benchmark, sem_
 // XXX assumes options.processes > 1
 void treeSpawn(const struct options * const options, thread_fn benchmark, sem_t * syncstart);
 
-void spawnThreads(const struct options * const options, thread_fn benchmark);
+nsec_t spawnThreads(const struct options * const options, thread_fn benchmark);
 
 void spawnProcesses(const struct options * const options);
 

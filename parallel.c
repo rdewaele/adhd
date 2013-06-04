@@ -39,14 +39,37 @@ stopSpawn:
 
 // create the desired amount of children all from the same parent
 void linearSpawn(const struct options * const options, thread_fn benchmark, sem_t * syncstart) {
-	unsigned nchildren = options->generic.processes_begin;
-	if (0 == spawnChildren_fork(nchildren)) {
-		sem_wait(syncstart);
-		spawnThreads(options, benchmark);
-	}
-	else {
-		for (unsigned i = 0; i < nchildren; ++i) { sem_post(syncstart); }
-		for (unsigned i = 0; i < nchildren; ++i) { wait(NULL); }
+	const struct options_generic * const gn_opt = &(options->generic);
+	int file[2];
+	if (0 != pipe(file)) { perror("process pipe"); }
+
+	for (unsigned nchildren = gn_opt->processes_begin; nchildren <= gn_opt->processes_end; ++nchildren) {
+		verbose(options, "\n>>>>> %u processes\n", nchildren);
+		// make sure output is written before duplicating the process
+		fflush(stdout); fflush(stderr);
+		if (0 == spawnChildren_fork(nchildren)) {
+			sem_wait(syncstart);
+			nsec_t thread_time = spawnThreads(options, benchmark);
+			write(file[1], &thread_time, sizeof(thread_time));
+			exit(EXIT_SUCCESS);
+		}
+		else {
+			struct timespec start, finish;
+			clock_gettime(CLOCK_MONOTONIC, &start);
+			for (unsigned i = 0; i < nchildren; ++i) { sem_post(syncstart); }
+			for (unsigned i = 0; i < nchildren; ++i) {
+				wait(NULL);
+				nsec_t thread_time = 0;
+				read(file[0], &thread_time, sizeof(thread_time));
+				verbose(options, "process finished; thread time: %"PRINSEC" msec\n", thread_time / (1000 * 1000));
+			}
+			clock_gettime(CLOCK_MONOTONIC, &finish);
+			finish.tv_sec -= start.tv_sec;
+			finish.tv_nsec -= start.tv_nsec;
+			verbose(options,
+					"%u processes; Total time: %"PRINSEC" msec\n",
+					nchildren, timespecToNsec(&finish) / (1000 * 1000));
+		}
 	}
 }
 
@@ -84,76 +107,80 @@ void treeSpawn(const struct options * const options, thread_fn benchmark, sem_t 
 #endif // temporarily disabled until development time can be spent here
 
 // TODO: error correctness
-void spawnThreads(const struct options * const options, thread_fn benchmark) {
+nsec_t spawnThreads(const struct options * const options, thread_fn benchmark) {
 	const struct options_generic * const gn_opt = &(options->generic);
+	nsec_t retval = 0;
 
-	unsigned num = gn_opt->threads_begin;
-	pthread_t allthreads[num];
-	pthread_barrier_t init, ready, set, go, finish;
+	for (unsigned num = gn_opt->threads_begin; num <= gn_opt->threads_end; ++num) {
+		verbose(options, "\n>>> %u threads\n", num);
 
-	pthread_barrier_init(&init, NULL, num);
-	pthread_barrier_init(&ready, NULL, num);
-	pthread_barrier_init(&set, NULL, num);
-	pthread_barrier_init(&go, NULL, num);
-	pthread_barrier_init(&finish, NULL, num);
+		pthread_t allthreads[num];
+		pthread_barrier_t init, ready, set, go, finish;
 
-	struct thread_context optarg = {
-		options,
-		num,
-		NULL,
-		&init, &ready, &set, &go, &finish
-	};
+		pthread_barrier_init(&init, NULL, num);
+		pthread_barrier_init(&ready, NULL, num);
+		pthread_barrier_init(&set, NULL, num);
+		pthread_barrier_init(&go, NULL, num);
+		pthread_barrier_init(&finish, NULL, num);
 
-	// start threads (must adhere to the 4-barrier protocol)
-	pthread_t * thread = allthreads;
-	for (unsigned i = 0; i < num; ++i) {
-		int rc = pthread_create(thread++, NULL, benchmark, &optarg);
-		switch (rc) {
-			case 0:
-				continue;
-				break;
-			case EAGAIN:
-			case EINVAL:
-			case EPERM:
-				errno = rc;
-				perror("pthread_create");
-				exit(EXIT_FAILURE);
-				break;
-			default:
-				fprintf(stderr, "unknown error in pthread_create\n");
-				exit(EXIT_FAILURE);
-				break;
+		struct thread_context optarg = {
+			options,
+			num,
+			NULL,
+			&init, &ready, &set, &go, &finish
+		};
+
+		// start threads (must adhere to the 4-barrier protocol)
+		pthread_t * thread = allthreads;
+		for (unsigned i = 0; i < num; ++i) {
+			int rc = pthread_create(thread++, NULL, benchmark, &optarg);
+			switch (rc) {
+				case 0:
+					continue;
+					break;
+				case EAGAIN:
+				case EINVAL:
+				case EPERM:
+					errno = rc;
+					perror("pthread_create");
+					exit(EXIT_FAILURE);
+					break;
+				default:
+					fprintf(stderr, "unknown error in pthread_create\n");
+					exit(EXIT_FAILURE);
+					break;
+			}
+		}
+
+		// wait for threads to finish and return
+		nsec_t * thread_retval = NULL;
+		for (unsigned i = 0; i < num; ++i) {
+			pthread_join(allthreads[i], (void *)&thread_retval);
+			if (thread_retval) {
+				retval += *thread_retval;
+				free(thread_retval);
+			}
 		}
 	}
-
-	// wait for threads to finish and return
-	for (unsigned i = 0; i < num; ++i)
-		pthread_join(allthreads[i], NULL);
+	return retval;
 }
 
 void spawnProcesses(const struct options * const options) {
 	const struct options_generic * const gn_opt = &(options->generic);
 
-	switch (gn_opt->processes_begin) {
-		case 0:
-			return;
-		case 1:
-			spawnThreads(options, runFlops);
-			return;
-		default:
-			{
-				sem_t * syncstart = sem_open("/adhd_syncstart", O_CREAT | O_RDWR, S_IRWXU);
-				sem_init(syncstart, !0, 0);
-				switch (gn_opt->create) {
-					case TREE:
-						//treeSpawn(options, runFlops, syncstart);
-						fprintf(stderr, "tree spawn currently unmaintaned, please check back later.\n");
-						break;
-					case LINEAR:
-						linearSpawn(options, runFlops, syncstart);
-						break;
-				}
-			}
+	if (gn_opt->processes_begin <= 0)
+		return;
+
+	sem_t * syncstart = sem_open("/adhd_syncstart", O_CREAT | O_RDWR, S_IRWXU);
+	sem_init(syncstart, !0, 0);
+	switch (gn_opt->create) {
+		case TREE:
+			//treeSpawn(options, runFlops, syncstart);
+			fprintf(stderr, "tree spawn currently unmaintaned, please check back later.\n");
+			break;
+		case LINEAR:
+			linearSpawn(options, runFlops, syncstart);
+			break;
 	}
 }
 
@@ -396,6 +423,9 @@ void * runFlops(void * c) {
 	const struct options * const options = context->options;
 	const struct options_flopsarray * const fa_opt = &(options->flopsArray);
 
+	// contains timing information of the last run
+	nsec_t run_totalnsec = 0;
+
 	// local alias for context->shared to prevent cast loitering
 	// XXX note that this acts as a cached value!
 	struct runFlopsSharedData * shared = NULL;
@@ -414,10 +444,11 @@ void * runFlops(void * c) {
 			makeFlopsArray(SINGLE, (int)len, &(shared->array));
 		}
 		pthread_barrier_wait(context->ready);
-		/*- barrier --------------------------------------------------------------*/
+	/*- barrier --------------------------------------------------------------*/
 
 		shared = context->shared;
-		flopsArray(MADD, shared->array, 1 + fa_opt->calculations / len);
+		// warmup
+		flopsArray(MADD, shared->array, len);
 
 		// run benchmark instance
 		pthread_barrier_wait(context->set);
@@ -430,7 +461,8 @@ void * runFlops(void * c) {
 		/*- barrier ------------------------------------------------------------*/
 
 		// TODO
-		flopsArray(ADD, shared->array, fa_opt->calculations / len);
+		unsigned long long fraction = fa_opt->calculations / (len * context->nthreads);
+		flopsArray(MADD, shared->array, fraction);
 		//flops_madd16(42, fa_opt->calculations);
 
 		pthread_barrier_wait(context->finish);
@@ -445,24 +477,35 @@ void * runFlops(void * c) {
 			t_lap.tv_sec = t_finish.tv_sec - t_go.tv_sec;
 			t_lap.tv_nsec = t_finish.tv_nsec - t_go.tv_nsec;
 			nsec_t totalnsec = timespecToNsec(&t_lap);
+			run_totalnsec += totalnsec;
 
 			// TODO: scale the amount of bytes fetched per thread
 
 			verbose(options,
-					"Iterations: %u\n", fa_opt->calculations / len);
+					"Iterations: %u\n", fraction);
 
 			verbose(options,
 					"Array size: %zd MiB | Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
 					shared->array->size / (1024 * 1024), totalnsec, totalnsec / (1000 * 1000));
 
+			double totalsec = (double)totalnsec / (1000. * 1000. * 1000.);
+			verbose(options,
+					"Flops: %u elements * %llu array iterations per thread * %u threads / %lf sec"
+					" = %lf gigaflops\n",
+					len, fraction, context->nthreads, totalsec,
+					(double)(len * fraction * context->nthreads) / (double)totalnsec);
 			verbose(options,
 					"Bandwidth: ~%.3lf GiB/s\n",
-					(double)(fa_opt->calculations / len) *
+					(double)fraction *
 					(double)shared->array->size / (double)totalnsec);
 		}
 	}
-	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)
+	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
 		freeRunFlopsSharedData(shared);
+		nsec_t * retval = malloc(sizeof(nsec_t));
+		*retval = run_totalnsec;
+		return retval;
+	}
 
 	return NULL;
 }

@@ -366,7 +366,7 @@ static void config2options(const config_t * config, struct options * options) {
 		fa_opt = (struct options_flopsarray) {
 			(unsigned)begin,
 				(unsigned)end,
-				(unsigned)calculations,
+				(unsigned long long)calculations,
 				(unsigned)step
 		};
 	}
@@ -461,7 +461,7 @@ void options_flopsarray_print(
 			"%sbegin size = %u;\n"
 			"%send size = %u;\n"
 			"%sstep size = %u;\n"
-			"%scalculations = %u;\n"
+			"%scalculations = %llu;\n"
 			,
 			prefix, fa_opt->begin,
 			prefix, fa_opt->end,
