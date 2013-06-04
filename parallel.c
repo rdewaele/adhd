@@ -441,12 +441,14 @@ void * runFlops(void * c) {
 		context->shared = makeRunFlopsSharedData(fa_opt);
 
 	// time each of the runs of all threads
+	unsigned long long fraction = 0;
 	unsigned len = 0 == fa_opt->begin ? fa_opt->step : fa_opt->begin;
 	for ( ; len <= fa_opt->end ; len += fa_opt->step) {
 		struct timespec t_go, t_finish, t_lap;
 		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
 			shared = context->shared;
 			makeFlopsArray(SINGLE, (int)len, &(shared->array));
+			fraction = fa_opt->calculations / (len * context->nthreads);
 		}
 		pthread_barrier_wait(context->ready);
 	/*- barrier --------------------------------------------------------------*/
@@ -466,7 +468,6 @@ void * runFlops(void * c) {
 		/*- barrier ------------------------------------------------------------*/
 
 		// TODO
-		unsigned long long fraction = fa_opt->calculations / (len * context->nthreads);
 		flopsArray(MADD, shared->array, fraction);
 		//flops_madd16(42, fa_opt->calculations);
 
@@ -483,9 +484,6 @@ void * runFlops(void * c) {
 			run_totalnsec += totalnsec;
 
 			// TODO: scale the amount of bytes fetched per thread
-
-			verbose(options,
-					"Iterations: %u\n", fraction);
 
 			verbose(options,
 					"Array size: %zd MiB | Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
