@@ -135,7 +135,7 @@ void spawnProcesses(const struct options * const options) {
 		case 0:
 			return;
 		case 1:
-			spawnThreads(options, runStream);
+			spawnThreads(options, runFlops);
 			return;
 		default:
 			{
@@ -143,10 +143,10 @@ void spawnProcesses(const struct options * const options) {
 				sem_init(syncstart, !0, 0);
 				switch (gn_opt->create) {
 					case TREE:
-						treeSpawn(options, runStream, syncstart);
+						treeSpawn(options, runFlops, syncstart);
 						break;
 					case LINEAR:
-						linearSpawn(options, runStream, syncstart);
+						linearSpawn(options, runFlops, syncstart);
 						break;
 				}
 			}
@@ -291,7 +291,6 @@ static void freeRunStreamSharedData(struct runStreamSharedData * rssd) {
 	free(rssd);
 }
 
-
 void * runStream(void * c) {
 	struct thread_context * const context = c;
 	const struct options * const options = context->options;
@@ -368,10 +367,92 @@ void * runStream(void * c) {
 /***************
  * Flops Array *
  ***************/
+struct runFlopsSharedData {
+	struct flopsArray * array;
+	nsec_t old_avg;
+};
+
+static struct runFlopsSharedData * makeRunFlopsSharedData(
+		const struct options_flopsarray * fa_opt __attribute__((unused)))
+{
+	struct runFlopsSharedData * init = malloc(sizeof(struct runFlopsSharedData));
+	init->array = NULL;
+	init->old_avg = 0;
+	return init;
+}
+
+static void freeRunFlopsSharedData(struct runFlopsSharedData * rssd) {
+	if (!rssd)
+		return;
+
+	free(rssd);
+}
 void * runFlops(void * c) {
-	const struct thread_context * const context = c;
+	struct thread_context * const context = c;
 	const struct options * const options = context->options;
 	const struct options_flopsarray * const fa_opt = &(options->flopsArray);
+
+	// local alias for context->shared to prevent cast loitering
+	// XXX note that this acts as a cached value!
+	struct runFlopsSharedData * shared = NULL;
+
+	int init_serial_thread = pthread_barrier_wait(context->init);
+	/*- barrier --------------------------------------------------------------*/
+	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)
+		context->shared = makeRunFlopsSharedData(fa_opt);
+
+	// time each of the runs of all threads
+	unsigned len = 0 == fa_opt->begin ? fa_opt->step : fa_opt->begin;
+	for ( ; len <= fa_opt->end ; len += fa_opt->step) {
+		struct timespec t_go, t_finish, t_lap;
+		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
+			shared = context->shared;
+			makeFlopsArray(SINGLE, (int)len, &(shared->array));
+		}
+		pthread_barrier_wait(context->ready);
+		/*- barrier --------------------------------------------------------------*/
+
+		shared = context->shared;
+
+		// run benchmark instance
+		pthread_barrier_wait(context->set);
+		/*- barrier ------------------------------------------------------------*/
+
+		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)
+			clock_gettime(CLOCK_MONOTONIC, &t_go);
+
+		pthread_barrier_wait(context->go);
+		/*- barrier ------------------------------------------------------------*/
+
+		// TODO
+		flopsArray(MADD, shared->array);
+
+		pthread_barrier_wait(context->finish);
+		/*- barrier ------------------------------------------------------------*/
+
+		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
+			// some bookkeeping of timing results
+			clock_gettime(CLOCK_MONOTONIC, &t_finish);
+
+			freeFlopsArray(shared->array);
+
+			t_lap.tv_sec = t_finish.tv_sec - t_go.tv_sec;
+			t_lap.tv_nsec = t_finish.tv_nsec - t_go.tv_nsec;
+			nsec_t totalnsec = timespecToNsec(&t_lap);
+
+			// TODO: scale the amount of bytes fetched per thread
+
+			verbose(options,
+					"Array size: %zd MiB | Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
+					shared->array->size / (1024 * 1024), totalnsec, totalnsec / (1000 * 1000));
+
+			verbose(options,
+					"Bandwidth: ~%.3lf GiB/s\n",
+					(double)shared->array->size / (double)totalnsec);
+		}
+	}
+	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread)
+		freeRunFlopsSharedData(shared);
 
 	return NULL;
 }

@@ -57,8 +57,12 @@ struct options_streamarray {
 };
 
 struct options_flopsarray {
-	// size for the array of floating types
-	int length;
+	// initial size for the benchmark's array
+	unsigned begin;
+	// upper size limit for the benchmark's array
+	unsigned end;
+	// the test array grows linearly by this amount (determines granularity)
+	unsigned step;
 };
 
 struct options {

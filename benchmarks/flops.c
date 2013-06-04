@@ -1,7 +1,9 @@
 #include "flops.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 static void fvec_init(int len, float * restrict vec) {
 	int idx;
@@ -20,19 +22,20 @@ static void dvec_init(int len, double * restrict vec) {
 // aligned allocation to prevent crossing cache line boundaries for data that
 // fits on a single cache line
 static void allocFlopsArray(struct flopsArray * array) {
-	size_t size = (size_t)array->len;
 	size_t align;
 	void * data, * scale, * offset;
+
+	array->size = (size_t)array->len;
 	switch (array->precision) {
 		case SINGLE:
-			size *= sizeof(float);
+			array->size *= sizeof(float);
 			align = __alignof(float);
 			data = &(array->vec.sp.data);
 			scale = &(array->vec.sp.scale);
 			offset = &(array->vec.sp.offset);
 			break;
 		case DOUBLE:
-			size *= sizeof(double);
+			array->size *= sizeof(double);
 			align = __alignof(double);
 			data = &(array->vec.dp.data);
 			scale = &(array->vec.dp.scale);
@@ -45,9 +48,16 @@ static void allocFlopsArray(struct flopsArray * array) {
 			exit(EXIT_FAILURE);
 	}
 
-	posix_memalign(data, align, size);
-	posix_memalign(scale, align, size);
-	posix_memalign(offset, align, size);
+	if (align < sizeof(void*))
+		align = sizeof(void*);
+
+	int ret;
+	if (0 != (ret = posix_memalign(data, align, array->size)))
+		fprintf(stderr, "data memory allocation failed: %s\n", strerror(ret));
+	if (0 != (ret = posix_memalign(scale, align, array->size)))
+		fprintf(stderr, "scale memory allocation failed: %s\n", strerror(ret));
+	if (0 != (ret = posix_memalign(offset, align, array->size)))
+		fprintf(stderr, "offset memory allocation failed: %s\n", strerror(ret));
 
 	switch (array->precision) {
 		case SINGLE:

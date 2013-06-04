@@ -1,11 +1,14 @@
 #pragma once
 
+#include <stddef.h>
+
 enum floating_t {SINGLE, DOUBLE};
 enum flop_t {ADD,MUL,MADD};
 
 struct flopsArray {
 	enum floating_t precision;
 	int len; // needs to be signed for icc to vectorize ...
+	size_t size;
 	union {
 		struct {
 			float * data;
@@ -19,3 +22,12 @@ struct flopsArray {
 		} dp;
 	} vec;
 };
+
+void makeFlopsArray(
+		enum floating_t precision,
+		int len,
+		struct flopsArray ** result);
+
+void freeFlopsArray(struct flopsArray * array);
+
+void flopsArray(enum flop_t operation, struct flopsArray * array);
