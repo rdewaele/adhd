@@ -1,0 +1,20 @@
+First test per-core properties, then test thread/process scaling.
+
+- bandwidth
+	- reduction -> global mem
+	- cache bandbr
+- latency (arraywalk)
+	- cost of overcommit
+		- shared/unshared
+	- strides > L1 to force only L2 hits
+	- vectorized version of arraywalk
+- flops double/single
+- inter process communication for processes doing pipelined parallelism
+- core pipeline
+	- single/dual/triple/quad thread CPI
+	- dependent/independent 1 thread, 2 thread
+	- scalar/float pipeline utilisation
+
+- outstanding cache requests
+	- latency hiding: test L2 duty cycle with two or more threads constantly
+	  reading from L2 by comparing to a one-thread L2 baseline test
