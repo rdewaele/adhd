@@ -21,7 +21,7 @@ void CSV_LogTimings(
 void verbose(const struct options * options, const char *format, ...);
 
 // nanosecond conversion
-static inline nsec_t timespecToNsec(struct timespec * t) {
+static inline nsec_t timespecToNsec(const struct timespec * const t) {
 	return 1000 * 1000 * 1000 * t->tv_sec + t->tv_nsec;
 }
 

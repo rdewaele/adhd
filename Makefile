@@ -16,13 +16,13 @@ endif
 ifeq ($(CC),icc)
 	CFLAGS += -vec-report=6
 endif
-CFLAGS := -std=c99 -D_POSIX_C_SOURCE=200809L -W -Wall -Wextra -pedantic \
+CFLAGS := -std=c11 -D_POSIX_C_SOURCE=200809L -W -Wall -Wextra -pedantic \
 	$(EXTRA_WARNINGS) \
-	-O3 -funroll-loops \
-	-DNDEBUG \
+	-O3 -g -funroll-loops \
 	-pthread \
 	$(shell pkg-config --cflags $(PKGCONFIG_LIBS)) \
-	$(CFLAGS)
+	$(CFLAGS) \
+	-DNDEBUG
 LDFLAGS += -lm -lrt \
 					 $(shell pkg-config --libs $(PKGCONFIG_LIBS))
 

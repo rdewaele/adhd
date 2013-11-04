@@ -1,33 +1,34 @@
 #pragma once
 
-#include "options.h"
-#include "logging.h"
-
 #include <pthread.h>
 #include <semaphore.h>
 #include <unistd.h>
 
-// create new arraywalk child processes
-// XXX exit when child creation fails, as test will yield unexpected results
-pid_t spawnChildren_fork(unsigned num);
+#include "options.h"
+#include "logging.h"
+
+/* Return codes for linearChildren and treeChildren. */
+enum childSpawn_ret {
+	CS_SUCCESS,
+	CSERR_BOUNDS,
+	CSERR_CLOSE,
+	CSERR_EOF,
+	CSERR_EXPREADY,
+	CSERR_EXPSTART,
+	CSERR_FORK,
+	CSERR_MALLOC,
+	CSERR_NOBRANCH,
+	CSERR_PIPE,
+	CSERR_READ,
+	CSERR_THREAD,
+	CSERR_WRITE
+};
+
+/* Create process(es) and launch benchmarks as defined by the options. */
+void spawnProcesses(const struct options * const options);
 
 // function type that can be used to start a pthread with
 typedef void * thread_fn(void *);
-
-// add threads to the current process
-bool spawnChildren_pthread(unsigned num, pthread_t * threads,
-		void * (* start)(void *), void * arg);
-
-// create the desired amount of children all from the same parent
-void linearSpawn(const struct options * const options, thread_fn benchmark, sem_t * syncstart);
-
-// create children in a tree-like fashion; i.e. children creating children
-// XXX assumes options.processes > 1
-void treeSpawn(const struct options * const options, thread_fn benchmark, sem_t * syncstart);
-
-nsec_t spawnThreads(const struct options * const options, thread_fn benchmark);
-
-void spawnProcesses(const struct options * const options);
 
 // context for a pthread's main function
 struct thread_context {
