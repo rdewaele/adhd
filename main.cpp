@@ -1,6 +1,6 @@
-#include "logging.h"
-#include "options.h"
-#include "parallel.h"
+#include "logging.hpp"
+#include "options.hpp"
+#include "parallel.hpp"
 
 #include <time.h>
 

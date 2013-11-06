@@ -1,4 +1,4 @@
-#include "flops.h"
+#include "flops.hpp"
 
 #include <errno.h>
 #include <stdio.h>

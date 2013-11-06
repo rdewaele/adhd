@@ -1,5 +1,5 @@
-#include "arraywalk.h"
-#include "util.h"
+#include "arraywalk.hpp"
+#include "util.hpp"
 
 #include <assert.h>
 #include <errno.h>

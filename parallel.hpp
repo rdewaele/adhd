@@ -4,8 +4,8 @@
 #include <semaphore.h>
 #include <unistd.h>
 
-#include "options.h"
-#include "logging.h"
+#include "options.hpp"
+#include "logging.hpp"
 
 /* Return codes for linearChildren and treeChildren. */
 enum childSpawn_ret {

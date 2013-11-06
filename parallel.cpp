@@ -12,9 +12,9 @@
 #include <stdio.h>
 #include <unistd.h>
 
-#include "logging.h"
-#include "options.h"
-#include "parallel.h"
+#include "logging.hpp"
+#include "options.hpp"
+#include "parallel.hpp"
 
 #include <type_traits>
 // TODO is_trivially_copyable is not yet implemented in GCC/CLang/icpc

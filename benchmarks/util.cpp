@@ -1,5 +1,5 @@
-#include "util.h"
-#include "arraywalk.h"
+#include "util.hpp"
+#include "arraywalk.hpp"
 
 #include <stdlib.h>
 

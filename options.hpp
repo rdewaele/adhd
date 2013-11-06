@@ -1,6 +1,6 @@
 #pragma once
 
-#include "benchmarks.h"
+#include "benchmarks.hpp"
 
 #include <libconfig.h>
 #include <limits.h>

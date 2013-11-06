@@ -26,13 +26,13 @@ CXXFLAGS := -std=c++11 -D_POSIX_C_SOURCE=200809L -W -Wall -Wextra -pedantic \
 LDFLAGS += -lm -lrt \
 					 $(shell pkg-config --libs $(PKGCONFIG_LIBS))
 
-SOURCES = main.c logging.c options.c parallel.c \
-					benchmarks/util.c \
-					benchmarks/arraywalk.c \
-					benchmarks/flops.c \
-					benchmarks/streaming.c
-VALGRIND_CONF = vgconfig.cfg
-OBJECTS = $(SOURCES:.c=.o)
+SOURCES = main.cpp logging.cpp options.cpp parallel.cpp \
+					benchmarks/util.cpp \
+					benchmarks/arraywalk.cpp \
+					benchmarks/flops.cpp \
+					benchmarks/streaming.cpp
+VALGRIND_CONF = vgconfig.cppfg
+OBJECTS = $(SOURCES:.cpp=.o)
 
 MAKEDEP = .make.dep
 
@@ -42,11 +42,11 @@ $(PROGRAM): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 # also depend on Makefile because we like to fiddle with it ;-)
-%.o: %.c Makefile
+%.o: %.cpp Makefile
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
-	rm -f $(PROGRAM) $(OBJECTS) $(MAKEDEP) $(SOURCES:.c=.plist)
+	rm -f $(PROGRAM) $(OBJECTS) $(MAKEDEP) $(SOURCES:.cpp=.plist)
 
 analyze:
 	clang --analyze $(SOURCES)

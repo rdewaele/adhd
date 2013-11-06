@@ -1,7 +1,7 @@
 #pragma once
 
-#include "benchmarks.h"
-#include "options.h"
+#include "benchmarks.hpp"
+#include "options.hpp"
 
 #include <stdint.h>
 #include <stdio.h>

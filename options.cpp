@@ -1,5 +1,5 @@
-#include "options.h"
-#include "logging.h"
+#include "options.hpp"
+#include "logging.hpp"
 
 #include <libconfig.h>
 #include <limits.h>
