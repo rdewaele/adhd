@@ -1,16 +1,13 @@
 LIBRARY = libarraywalk.a
-CXXPROGRAM = arraywalk_cpp
-CCPROGRAM = arraywalk_c
+PROGRAM = arraywalk
 
-all: $(CXXPROGRAM) $(CCPROGRAM)
+all: $(PROGRAM)
 
-LIBSOURCES = arraywalk.cpp c_bindings.cpp
-CXXSOURCES = cpp_main.cpp
-CCSOURCES = c_main.c
+LIBSOURCES = arraywalk.cpp
+SOURCES = cpp_main.cpp
 
 LIBOBJECTS = $(LIBSOURCES:.cpp=.o)
-CXXOBJECTS = $(CXXSOURCES:.cpp=.o)
-CCOBJECTS = $(CCSOURCES:.c=.o)
+OBJECTS = $(SOURCES:.cpp=.o)
 
 MAKEDEP = .make.dep
 # One could play with compiler optimizations to see whether those have any
@@ -43,23 +40,17 @@ test: $(PROGRAM)
 
 run: test
 
-$(CXXPROGRAM): $(LIBRARY) $(CXXOBJECTS)
-	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(CXXOBJECTS) $(LDLIBS) -o $@
-
-$(CCPROGRAM): $(LIBRARY) $(CCOBJECTS)
-	$(CC) $(CFLAGS) $(LDFLAGS) $(CCOBJECTS) $(LDLIBS) -o $@
+$(PROGRAM): $(LIBRARY) $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OBJECTS) $(LDLIBS) -o $@
 
 $(LIBRARY): $(LIBOBJECTS)
 	$(AR) $(ARFLAGS) $@ $^
 
-$(CXXOBJECTS:%.o):%.cpp
+$(OBJECTS:%.o):%.cpp
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-$(CCOBJECTS:%.o):%.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
 clean:
-	rm -f $(CXXPROGRAM) $(CCPROGRAM) $(LIBRARY) $(CXXOBJECTS) $(CCOBJECTS) \
+	rm -f $(PROGRAM) $(LIBRARY) $(OBJECTS) \
 		$(LIBOBJECTS) $(MAKEDEP) $(wildcard *.plist)
 
 analyze:
@@ -68,7 +59,7 @@ analyze:
 valgrind: $(PROGRAMS) $(VALGRIND_CONF)
 	valgrind -v --leak-check=full --show-reachable=yes ./$< -i -c $(VALGRIND_CONF)
 
-$(MAKEDEP): $(CXXSOURCES) $(CCSOURCES)
+$(MAKEDEP): $(SOURCES)
 	$(CXX) $(CXXFLAGS) -MM $^ > $@
 
 .PHONY: all clean analyze test run

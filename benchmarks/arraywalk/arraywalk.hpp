@@ -4,12 +4,12 @@
 #include <random>
 #include <type_traits>
 
-#include "arraywalk_def.h"
-
 #define TIMEDWALK_LOC_DEC(NUM) \
 	INDEX_T timedwalk_loc##NUM(uint_fast32_t, uint64_t &, uint64_t &)
 
 namespace arraywalk {
+
+	enum pattern { RANDOM, INCREASING, DECREASING };
 
 	template <typename INDEX_T>
 		class ArrayWalk {
