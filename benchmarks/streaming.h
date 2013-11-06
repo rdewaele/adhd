@@ -12,7 +12,7 @@ typedef union {
 	int64_t * i64;
 } array_t;
 
-struct streamArray {
+struct StreamArray {
 	enum stream_width width;
 	unsigned len;
 	size_t size;
@@ -23,14 +23,14 @@ struct streamArray {
 void makeStreamArray(
 		enum stream_width width,
 		unsigned len,
-		struct streamArray ** result);
+		struct StreamArray ** result);
 
-void freeStreamArray(struct streamArray * array);
+void freeStreamArray(struct StreamArray * array);
 
-void streamArray(struct streamArray * array);
+void streamArray(struct StreamArray * array);
 
-void memcpyArray(struct streamArray * array);
+void memcpyArray(struct StreamArray * array);
 
-void fillArray(struct streamArray * array);
+void fillArray(struct StreamArray * array);
 
-void memsetArray(struct streamArray * array);
+void memsetArray(struct StreamArray * array);

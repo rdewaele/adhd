@@ -32,14 +32,14 @@
 	else if (stop.tv_sec == start.tv_sec && stop.tv_nsec < start.tv_nsec) \
 		fprintf(stderr, "TIMING ERROR: This experiment started NANOSECONDS in the future ...\n"); \
 	/* report timing */ \
-	time_var = (struct timespec){ stop.tv_sec - start.tv_sec, stop.tv_nsec - start.tv_nsec }
+	time_var = timespec { stop.tv_sec - start.tv_sec, stop.tv_nsec - start.tv_nsec }
 #endif
 
 // Verify whether the input array implements a single cycle of a lengh equal
 // to the array itself.
 bool isFullCycle(walking_t * array, walking_t len) {
 	walking_t i, idx;
-	bool * visited = malloc(len * sizeof(bool));
+	bool * visited = static_cast<bool *>(malloc(len * sizeof(bool)));
 	bool allVisited = false;
 
 	for (i = 0; i < len; ++i)
@@ -54,24 +54,24 @@ bool isFullCycle(walking_t * array, walking_t len) {
 
 	free(visited);
 #ifndef NDEBUG
-	fprintf(stderr, "array at %p is verified: %scyclic (%"PRIWALKING" elements)\n",
+	fprintf(stderr, "array at %p is verified: %scyclic (%" PRIWALKING " elements)\n",
 			(void*)array, allVisited? "" : "NOT ", len);
 #endif
 	return allVisited;
 }
 
 // Free the walkArray structure.
-void freeWalkArray(struct walkArray * array) {
+void freeWalkArray(struct WalkArray * array) {
 	free(array->array);
 	free(array);
 }
 
 // TODO: size may overflow if len > (walking_t_max / sizeof(walking_t))
-static void allocWalkArray(walking_t len, struct walkArray ** result) {
+static void allocWalkArray(walking_t len, struct WalkArray ** result) {
 	const walking_t size = (walking_t)sizeof(walking_t) * len;
-	walking_t * const array = malloc(size);
+	walking_t * const array = static_cast<walking_t *>(malloc(size));
 
-	*result = malloc(sizeof(struct walkArray));
+	*result = static_cast<WalkArray *>(malloc(sizeof(struct WalkArray)));
 
 	(*result)->array = array;
 	(*result)->size = size;
@@ -79,7 +79,7 @@ static void allocWalkArray(walking_t len, struct walkArray ** result) {
 }
 
 // Linear cycle, increasing indexes.
-struct timespec makeIncreasingWalkArray(walking_t len, struct walkArray ** result) {
+struct timespec makeIncreasingWalkArray(walking_t len, struct WalkArray ** result) {
 	allocWalkArray(len, result);
 
 	struct timespec elapsed;
@@ -94,7 +94,7 @@ struct timespec makeIncreasingWalkArray(walking_t len, struct walkArray ** resul
 }
 
 // Linear cycle, decreasing indexes.
-struct timespec makeDecreasingWalkArray(walking_t len, struct walkArray ** result) {
+struct timespec makeDecreasingWalkArray(walking_t len, struct WalkArray ** result) {
 	allocWalkArray(len, result);
 
 	struct timespec elapsed;
@@ -112,7 +112,7 @@ struct timespec makeDecreasingWalkArray(walking_t len, struct walkArray ** resul
 // XXX assumes that len > 0
 //     (calling with len <= 1 doesn't make sense anyway)
 // TODO: check return values (malloc, ..)
-struct timespec makeRandomWalkArray(walking_t len, struct walkArray ** result) {
+struct timespec makeRandomWalkArray(walking_t len, struct WalkArray ** result) {
 	assert(len > 0);
 
 	allocWalkArray(len, result);
@@ -145,7 +145,7 @@ struct timespec makeRandomWalkArray(walking_t len, struct walkArray ** result) {
 }
 
 // setup an array for a walkArray run
-struct timespec makeWalkArray(enum pattern_type p, walking_t len, struct walkArray ** array) {
+struct timespec makeWalkArray(enum pattern_type p, walking_t len, struct WalkArray ** array) {
 	struct timespec elapsed;
 	switch (p) {
 		case INCREASING:
@@ -163,7 +163,7 @@ struct timespec makeWalkArray(enum pattern_type p, walking_t len, struct walkArr
 }
 
 // walk the array as encoded by make*WalkArray(size_t size)
-walking_t walkArray(struct walkArray * array, size_t steps, struct timespec * elapsed) {
+walking_t walkArray(struct WalkArray * array, size_t steps, struct timespec * elapsed) {
 	walking_t * a = array->array;
 	// XXX do no just make idx volatile to prevent code omission by compiler
 	// optimizations: having idx volatile means that idx must be written to,

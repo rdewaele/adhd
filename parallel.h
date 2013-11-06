@@ -25,15 +25,15 @@ enum childSpawn_ret {
 };
 
 /* Create process(es) and launch benchmarks as defined by the options. */
-void spawnProcesses(const struct options * const options);
+void spawnProcesses(const struct Options * const options);
 
 // function type that can be used to start a pthread with
 typedef void * thread_fn(void *);
 
 // context for a pthread's main function
-struct thread_context {
+struct Thread_context {
 	// as defined in options.h
-	const struct options * const options;
+	const struct Options * const options;
 	// number of threads using this context
 	unsigned nthreads;
 	// shared data
@@ -60,7 +60,7 @@ thread_fn runStream;
 thread_fn runFlops;
 
 // benchmark launcher function type
-typedef void launcher_fn(const struct options * const options);
+typedef void launcher_fn(const struct Options * const options);
 
 launcher_fn launchWalk;
 launcher_fn launchStream;

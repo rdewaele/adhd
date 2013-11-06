@@ -9,19 +9,19 @@ PKGCONFIG_LIBS = libconfig
 EXTRA_WARNINGS := -Wconversion -Wshadow -Wpointer-arith -Wcast-qual \
 								 -Wwrite-strings
 # conditionally add warnings known not to be recongnised by icc
-ifneq ($(CC),icc)
+ifneq ($(CXX),icc)
 	EXTRA_WARNINGS += -Wcast-align
 endif
 # make icc report very elaborately about vectorization successes and failures
-ifeq ($(CC),icc)
-	CFLAGS += -vec-report=6
+ifeq ($(CXX),icc)
+	CXXFLAGS += -vec-report=6
 endif
-CFLAGS := -std=c11 -D_POSIX_C_SOURCE=200809L -W -Wall -Wextra -pedantic \
+CXXFLAGS := -std=c++11 -D_POSIX_C_SOURCE=200809L -W -Wall -Wextra -pedantic \
 	$(EXTRA_WARNINGS) \
 	-O3 -g -funroll-loops \
 	-pthread \
 	$(shell pkg-config --cflags $(PKGCONFIG_LIBS)) \
-	$(CFLAGS) \
+	$(CXXFLAGS) \
 	-DNDEBUG
 LDFLAGS += -lm -lrt \
 					 $(shell pkg-config --libs $(PKGCONFIG_LIBS))
@@ -39,11 +39,11 @@ MAKEDEP = .make.dep
 all: $(PROGRAM)
 
 $(PROGRAM): $(OBJECTS)
-	$(CC) $(CFLAGS) $^ $(LDFLAGS) -o $@
+	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
 # also depend on Makefile because we like to fiddle with it ;-)
 %.o: %.c Makefile
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CXX) $(CXXFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(PROGRAM) $(OBJECTS) $(MAKEDEP) $(SOURCES:.c=.plist)
@@ -57,6 +57,6 @@ valgrind: $(PROGRAM) $(VALGRIND_CONF)
 .PHONY: clean analyze
 
 $(MAKEDEP):
-	$(CC) -MM $(CFLAGS) $(SOURCES) > $@
+	$(CXX) -MM $(CXXFLAGS) $(SOURCES) > $@
 
 include $(MAKEDEP)

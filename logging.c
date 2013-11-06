@@ -13,7 +13,7 @@ const char * bool2onoff(bool b) { return b ? "on" : "off"; }
 void CSV_LogTimings(
 		FILE * log,
 		long long id,
-		struct walkArray * wa,
+		struct WalkArray * wa,
 		nsec_t nsec,
 		nsec_t stddev
 		)
@@ -25,7 +25,7 @@ void CSV_LogTimings(
 }
 
 // log to stdout depending on verbosity
-void verbose(const struct options * options, const char *format, ...) {
+void verbose(const struct Options * options, const char *format, ...) {
 	va_list args;
 	va_start(args, format);
 
@@ -37,8 +37,8 @@ void verbose(const struct options * options, const char *format, ...) {
 
 // walkArray creation report
 void logMakeWalkArray(
-		const struct options * const options,
-		const struct walkArray * const array,
+		const struct Options * const options,
+		const struct WalkArray * const array,
 		struct timespec * elapsed)
 {
 	const char * array_unit;
@@ -64,18 +64,18 @@ void logMakeWalkArray(
 	}
 	nsec_t totalusec = timespecToNsec(elapsed) / 1000;
 	verbose(options,
-			"%.4lu %s (= %lu elements) randomized in %"PRINSEC" usec | %u reads:\n",
+			"%.4lu %s (= %lu elements) randomized in %"  PRINSEC  " usec | %u reads:\n",
 			array_size, array_unit, array->len, totalusec,
 			options->walkArray.aaccesses);
 }
 
 nsec_t logWalkArray(
-		const struct options * const options,
+		const struct Options * const options,
 		const nsec_t * const timings,
 		nsec_t old_avg)
 {
-	const struct options_walkarray * const wa_opt = &(options->walkArray);
-	const struct options_generic * const gn_opt = &(options->generic);
+	const struct Options_walkarray * const wa_opt = &(options->walkArray);
+	const struct Options_generic * const gn_opt = &(options->generic);
 	assert(wa_opt->repetitions > 0);
 	// average
 	nsec_t totalnsec = 0;
@@ -100,9 +100,9 @@ nsec_t logWalkArray(
 	//CSV_LogTimings(csvlog, pid, array, new_avg, lround(stddev));
 
 	// timing for a single run
-	verbose(options, ">>>\t%"PRINSEC" usec"
+	verbose(options, ">>>\t%" PRINSEC " usec"
 			" | delta %+2.2lf%%"
-			" (%"PRINSEC" -> %"PRINSEC")"
+			" (%" PRINSEC " -> %" PRINSEC ")"
 			" | stddev %ld usec (%2.2lf%%)\n",
 			new_avg / 1000,
 			100 * (double)(new_avg - old_avg) / (double)old_avg,
@@ -113,9 +113,9 @@ nsec_t logWalkArray(
 	// timing for a single read
 	nsec_t nsread_old = old_avg / wa_opt->aaccesses;
 	nsec_t nsread_new = new_avg / wa_opt->aaccesses;
-	verbose(options, ">>>\t~%"PRINSEC" nsec/read"
+	verbose(options, ">>>\t~%" PRINSEC " nsec/read"
 			" | delta %+2.2lf%%"
-			" (%"PRINSEC" -> %"PRINSEC")"
+			" (%" PRINSEC " -> %" PRINSEC ")"
 			" | ~%.2lf cycles/read"
 			" @ %.3f GHz"
 			"\n",

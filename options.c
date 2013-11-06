@@ -265,10 +265,10 @@ static void c2o_strncpy(
 
 // TODO: stop abusing NAME_MAX ;-)
 // TODO: proper bounds checking for all types
-static void config2options(const config_t * config, struct options * options) {
+static void config2options(const config_t * config, struct Options * options) {
 
 	// generic group
-	struct options_generic gn_opt;
+	struct Options_generic gn_opt;
 	{
 		double frequency;
 		int logging, silent;
@@ -288,14 +288,14 @@ static void config2options(const config_t * config, struct options * options) {
 		config_setting_lookup_int64(generic, FLD_GENERIC_THREADS_END, &threads_end);
 		config_setting_lookup_bool(generic, FLD_GENERIC_SILENT, &silent);
 
-		gn_opt = (struct options_generic) {
+		gn_opt = Options_generic {
 			spawn_typeFromString(create),
 				frequency,
-				logging,
+				(bool)logging,
 				"", // XXX strncpy ! (log filename)
 				(unsigned)processes_begin,
 				(unsigned)processes_end,
-				silent,
+				(bool)silent,
 				(unsigned)threads_begin,
 				(unsigned)threads_end
 		};
@@ -303,7 +303,7 @@ static void config2options(const config_t * config, struct options * options) {
 	}
 
 	// walking array group
-	struct options_walkarray wa_opt;
+	struct Options_walkarray wa_opt;
 	{
 		long long aaccesses, begin, repetitions, end, step;
 		char scaling[NAME_MAX], pattern[NAME_MAX];
@@ -319,7 +319,7 @@ static void config2options(const config_t * config, struct options * options) {
 		c2o_strncpy(pattern,
 				config_setting_get_member(array, FLD_WALKARRAY_PATTERN), NAME_MAX);
 
-		wa_opt = (struct options_walkarray) {
+		wa_opt = Options_walkarray {
 			(unsigned)aaccesses,
 				(walking_t)begin,
 				(walking_t)end,
@@ -330,7 +330,7 @@ static void config2options(const config_t * config, struct options * options) {
 	}
 
 	// streaming array group
-	struct options_streamarray sa_opt;
+	struct Options_streamarray sa_opt;
 	{
 		long long begin, end, step;
 		char scaling[NAME_MAX];
@@ -342,7 +342,7 @@ static void config2options(const config_t * config, struct options * options) {
 		c2o_strncpy(scaling,
 				config_setting_get_member(array, FLD_STREAMARRAY_SCALING), NAME_MAX);
 
-		sa_opt = (struct options_streamarray) {
+		sa_opt = Options_streamarray {
 			(unsigned)begin,
 				(unsigned)end,
 				(unsigned)step
@@ -350,7 +350,7 @@ static void config2options(const config_t * config, struct options * options) {
 	}
 
 	// flops array group
-	struct options_flopsarray fa_opt;
+	struct Options_flopsarray fa_opt;
 	{
 		long long begin, end, step, calculations;
 		char scaling[NAME_MAX];
@@ -363,7 +363,7 @@ static void config2options(const config_t * config, struct options * options) {
 		c2o_strncpy(scaling,
 				config_setting_get_member(array, FLD_FLOPSARRAY_SCALING), NAME_MAX);
 
-		fa_opt = (struct options_flopsarray) {
+		fa_opt = Options_flopsarray {
 			(unsigned)begin,
 				(unsigned)end,
 				(unsigned long long)calculations,
@@ -389,7 +389,7 @@ static void options_help(const char * name) {
 void options_generic_print(
 		FILE * out,
 		const char * prefix,
-		const struct options_generic * gn_opt)
+		const struct Options_generic * gn_opt)
 {
 	fprintf(out,
 			"%sprocess creation = %s;\n"
@@ -417,12 +417,12 @@ void options_generic_print(
 void options_walkarray_print(
 		FILE * out,
 		const char * prefix,
-		const struct options_walkarray * wa_opt)
+		const struct Options_walkarray * wa_opt)
 {
 	fprintf(out,
-			"%sbegin size = %"PRIWALKING";\n"
-			"%send size = %"PRIWALKING";\n"
-			"%sstep size = %"PRIWALKING";\n"
+			"%sbegin size = %" PRIWALKING ";\n"
+			"%send size = %" PRIWALKING ";\n"
+			"%sstep size = %" PRIWALKING ";\n"
 			"%saccesses = %u;\n"
 			"%stest repetitions = %u;\n"
 			"%scycle pattern = %s;\n"
@@ -439,7 +439,7 @@ void options_walkarray_print(
 void options_streamarray_print(
 		FILE * out,
 		const char * prefix,
-		const struct options_streamarray * sa_opt)
+		const struct Options_streamarray * sa_opt)
 {
 	fprintf(out,
 			"%sbegin size = %u;\n"
@@ -455,7 +455,7 @@ void options_streamarray_print(
 void options_flopsarray_print(
 		FILE * out,
 		const char * prefix,
-		const struct options_flopsarray * fa_opt)
+		const struct Options_flopsarray * fa_opt)
 {
 	fprintf(out,
 			"%sbegin size = %u;\n"
@@ -473,12 +473,12 @@ void options_flopsarray_print(
 void options_print(
 		FILE * out,
 		const char * prefix,
-		const struct options * opt)
+		const struct Options * opt)
 {
 	// keep 'prefix' as the first characters
 	const char indent[] = "  ";
 	const size_t childprefixlen = 1 + strlen(prefix) + strlen(indent);
-	char * childprefix = malloc(childprefixlen);
+	char * childprefix = static_cast<char*>(malloc(childprefixlen));
 	snprintf(childprefix, childprefixlen, "%s%s", prefix, indent);
 
 	fprintf(out, "%sgeneric :\n{\n", prefix);
@@ -497,7 +497,7 @@ void options_print(
 // TODO: error handling
 // TODO: better exit point handling
 // (freeing resources for valgrind-cleanliness is too tedious at the moment)
-void options_parse(int argc, char * argv[], struct options * options) {
+void options_parse(int argc, char * argv[], struct Options * options) {
 	int opt;
 	// modified when config is loaded on the command line
 	config_t config;

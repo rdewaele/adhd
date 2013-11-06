@@ -15,7 +15,7 @@ enum spawn_type spawn_typeFromString(const char * st);
 const char * pattern_typeToString(enum pattern_type pt);
 enum pattern_type pattern_typeFromString(const char * pt);
 
-struct options_generic {
+struct Options_generic {
 	// process Creation
 	enum spawn_type create;
 	// cpu frequency to use in memory access cycles calculation
@@ -36,7 +36,7 @@ struct options_generic {
 	unsigned threads_end;
 };
 
-struct options_walkarray {
+struct Options_walkarray {
 	// amount of array accesses to perform (improves bench accuracy)
 	unsigned aaccesses;
 	// initial size for the benchmark's array
@@ -51,7 +51,7 @@ struct options_walkarray {
 	walking_t step;
 };
 
-struct options_streamarray {
+struct Options_streamarray {
 	// initial size for the benchmark's array
 	unsigned begin;
 	// upper size limit for the benchmark's array
@@ -60,7 +60,7 @@ struct options_streamarray {
 	unsigned step;
 };
 
-struct options_flopsarray {
+struct Options_flopsarray {
 	// initial size for the benchmark's array
 	unsigned begin;
 	// upper size limit for the benchmark's array
@@ -71,36 +71,36 @@ struct options_flopsarray {
 	unsigned step;
 };
 
-struct options {
-	struct options_generic generic;
-	struct options_walkarray walkArray;
-	struct options_streamarray streamArray;
-	struct options_flopsarray flopsArray;
+struct Options {
+	struct Options_generic generic;
+	struct Options_walkarray walkArray;
+	struct Options_streamarray streamArray;
+	struct Options_flopsarray flopsArray;
 };
 
-void options_parse(int argc, char * argv[], struct options * options);
+void options_parse(int argc, char * argv[], struct Options * options);
 
 void options_generic_print(
 		FILE * out,
 		const char * prefix,
-		const struct options_generic * gn_opt);
+		const struct Options_generic * gn_opt);
 
 void options_walkarray_print(
 		FILE * out,
 		const char * prefix,
-		const struct options_walkarray * wa_opt);
+		const struct Options_walkarray * wa_opt);
 
 void options_streamarray_print(
 		FILE * out,
 		const char * prefix,
-		const struct options_streamarray * sa_opt);
+		const struct Options_streamarray * sa_opt);
 
 void options_flopsarray_print(
 		FILE * out,
 		const char * prefix,
-		const struct options_flopsarray * fa_opt);
+		const struct Options_flopsarray * fa_opt);
 
 void options_print(
 		FILE * out,
 		const char * prefix,
-		const struct options * opt);
+		const struct Options * opt);

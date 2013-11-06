@@ -7,7 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void initStreamArray(struct streamArray * array) {
+static void initStreamArray(struct StreamArray * array) {
 #define DO_INIT_STREAM(TYPE, ARRAY, UTYPE) do { \
 	long dis_idx; TYPE dis_init; \
 	for (dis_idx = 0, dis_init = 0; dis_idx < ARRAY->len; ++dis_idx, ++dis_init) { \
@@ -30,7 +30,7 @@ static void initStreamArray(struct streamArray * array) {
 	}
 }
 
-static void allocStreamArray(struct streamArray * array) {
+static void allocStreamArray(struct StreamArray * array) {
 	array->size = array->len;
 	unsigned align;
 	void * in, * out;
@@ -66,8 +66,8 @@ static void allocStreamArray(struct streamArray * array) {
 			exit(EXIT_FAILURE);
 	}
 
-	posix_memalign(in, align, array->size);
-	posix_memalign(out, align, array->size);
+	posix_memalign(&in, align, array->size);
+	posix_memalign(&out, align, array->size);
 
 	initStreamArray(array);
 }
@@ -75,9 +75,9 @@ static void allocStreamArray(struct streamArray * array) {
 void makeStreamArray(
 		enum stream_width width,
 		unsigned len,
-		struct streamArray ** result)
+		struct StreamArray ** result)
 {
-	*result = malloc(sizeof(struct streamArray));
+	*result = static_cast<StreamArray *>(malloc(sizeof(struct StreamArray)));
 
 	(*result)->width = width;
 	(*result)->len = len;
@@ -85,7 +85,7 @@ void makeStreamArray(
 	allocStreamArray(*result);
 }
 
-void freeStreamArray(struct streamArray * array) {
+void freeStreamArray(struct StreamArray * array) {
 	switch (array->width) {
 		case I8:
 			free(array->in.i8);
@@ -109,8 +109,8 @@ void freeStreamArray(struct streamArray * array) {
 
 #define DEF_COPY_STREAM(NAME,ELTYPE)\
 	static void NAME(\
-			ELTYPE * restrict out,\
-			ELTYPE * restrict in,\
+			ELTYPE * out,\
+			ELTYPE * in,\
 			long len) {\
 	for (long idx = 0; idx < len; ++idx)\
 		out[idx] = in[idx];\
@@ -121,7 +121,7 @@ DEF_COPY_STREAM(streami16,int16_t)
 DEF_COPY_STREAM(streami32,int32_t)
 DEF_COPY_STREAM(streami64,int64_t)
 
-void streamArray(struct streamArray * array) {
+void streamArray(struct StreamArray * array) {
 	switch (array->width) {
 		case I8:
 			streami8(array->out.i8, array->in.i8, array->len);
@@ -138,7 +138,7 @@ void streamArray(struct streamArray * array) {
 	}
 }
 
-void memcpyArray(struct streamArray * array) {
+void memcpyArray(struct StreamArray * array) {
 	switch (array->width) {
 		case I8:
 			memcpy(array->out.i8, array->in.i8, array->size);
@@ -157,7 +157,7 @@ void memcpyArray(struct streamArray * array) {
 
 #define DEF_STREAM_42(NAME,ELTYPE)\
 	static void NAME(\
-			ELTYPE * restrict out,\
+			ELTYPE * out,\
 			long len) {\
 		register const ELTYPE src = 42;\
 	for (long idx = 0; idx < len; ++idx)\
@@ -170,7 +170,7 @@ DEF_STREAM_42(stream42i32,int32_t)
 //DEF_STREAM_42(stream42i64,int64_t)
 
 void stream42i64(
-			int64_t * restrict out,
+			int64_t * out,
 			long len)
 {
 	const int64_t src = 42;
@@ -184,7 +184,7 @@ void stream42i64(
 } 
 
 
-void fillArray(struct streamArray * array) {
+void fillArray(struct StreamArray * array) {
 	switch (array->width) {
 		case I8:
 			stream42i8(array->in.i8, array->len);
@@ -201,7 +201,7 @@ void fillArray(struct streamArray * array) {
 	}
 }
 
-void memsetArray(struct streamArray * array) {
+void memsetArray(struct StreamArray * array) {
 	const int src = 42;
 	switch (array->width) {
 		case I8:

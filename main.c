@@ -7,9 +7,9 @@
 // program entry point
 int main(int argc, char * argv[]) {
 	struct timespec timer;
-	struct options options_init;
+	struct Options options_init;
 	options_parse(argc, argv, &options_init);
-	const struct options * const options = &options_init;
+	const struct Options * const options = &options_init;
 
 	// random seed
 	srand((unsigned)time(NULL));

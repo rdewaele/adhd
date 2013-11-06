@@ -51,20 +51,20 @@ typedef uint_fast64_t walking_t;
 #define WALKING_T_CAST(EXP) (walking_t)(EXP)
 
 // Walkarrays know their length. (And for convenience, their size in bytes.)
-struct walkArray {
+struct WalkArray {
 	walking_t len;
 	size_t size;
 	walking_t * array;
 };
 
 // Encode a random generated cyclic path of given length in an array.
-struct timespec makeRandomWalkArray(walking_t len, struct walkArray ** result);
+struct timespec makeRandomWalkArray(walking_t len, struct WalkArray ** result);
 
 // Encode a linear increasing cyclic path of given length in an array.
-struct timespec makeIncreasingWalkArray(walking_t len, struct walkArray ** result);
+struct timespec makeIncreasingWalkArray(walking_t len, struct WalkArray ** result);
 
 // Encode a linear decreasing cyclic path of given length in an array.
-struct timespec makeDecreasingWalkArray(walking_t len, struct walkArray ** result);
+struct timespec makeDecreasingWalkArray(walking_t len, struct WalkArray ** result);
 
 // pattern_type maps to the different kinds of walk arrays that can be created
 enum pattern_type {RANDOM, INCREASING, DECREASING};
@@ -73,14 +73,14 @@ enum pattern_type {RANDOM, INCREASING, DECREASING};
 struct timespec makeWalkArray(
 		enum pattern_type p,
 		walking_t len,
-		struct walkArray ** result);
+		struct WalkArray ** result);
 
 // Free the walkArray structure.
-void freeWalkArray(struct walkArray * array);
+void freeWalkArray(struct WalkArray * array);
 
 // Walk the array as encoded by makeRandomWalkArray(size_t len), store timing
 // information in 'elapsed' (must be valid), and return final index.
-walking_t walkArray(struct walkArray * array, size_t steps, struct timespec * elapsed);
+walking_t walkArray(struct WalkArray * array, size_t steps, struct timespec * elapsed);
 
 // Verify whether the input array implements a single cycle of a lengh equal
 // to the array itself.

@@ -16,6 +16,17 @@
 #include "options.h"
 #include "parallel.h"
 
+#include <type_traits>
+// TODO is_trivially_copyable is not yet implemented in GCC/CLang/icpc
+// --> enable static assertions for checks when support is available
+// Meanwhile:
+// A trivially copyable class is a class that (draft 3242, section [class]):
+// - has no non-trivial copy constructors (12.8),
+// - has no non-trivial move constructors (12.8),
+// - has no non-trivial copy assignment operators (13.5.3, 12.8),
+// - has no non-trivial move assignment operators (13.5.3, 12.8), and
+// - has a trivial destructor (12.4).
+
 #define REPORT_ERROR(ERNUM) fprintf(stderr, "%s: %d (%s) error: %s\n", __FILE__, __LINE__, __FUNCTION__, strerror(ERNUM))
 
 #define CS_RETURN_ON_ERROR(fncall) do { \
@@ -30,35 +41,69 @@
 
 /* Process channels for processes belonging to a tree; see treeChildren(). */
 struct channels {
+	channels(
+			const int rR = -1, const int rW = -1,
+			const int fcR = -1, const int fcW = -1,
+			const int tcR = -1, const int tcW = -1,
+			const int tpR = -1, const int tpW = -1,
+			const int fpR = -1, const int fpW = -1):
+		root{rR, rW},
+		fromChildren{fcR, fcW}, toChildren{tcR, tcW},
+		toParent{tpR, tpW}, fromParent{fpR, fpW}
+	{}
+
+	channels(const int _root[2]) { channels(_root[0], root[1]); }
+
+	int root[2];
 	int fromChildren[2];
 	int toChildren[2];
 	int toParent[2];
 	int fromParent[2];
-	int root[2];
 };
+#if 0 // see comment at '#include <type_traits>' at the top of this file
+static_assert(std::is_trivially_copyable<channels>::value,
+		"struct channels must be trivially copyable");
+#else
+static_assert(std::is_standard_layout<channels>::value,
+		"struct channels must be trivially copyable");
+#endif
 
 /* Timing information structure to write to logger process. */
 struct timings {
-	pid_t pid;
-	pid_t ppid;
-	nsec_t init;
-	nsec_t ready;
-	nsec_t start;
-	nsec_t done;
+	pid_t pid    {-1};
+	pid_t ppid   {-1};
+	nsec_t init  {0};
+	nsec_t ready {0};
+	nsec_t start {0};
+	nsec_t done  {0};
 };
 /* POSIX.1-2001: write(2)s <= PIPE_BUF bytes must be atomic. */
-_Static_assert(sizeof(struct timings) <= PIPE_BUF,
-               "PIPE_BUF too small: can not atomically send timing info.");
+static_assert(sizeof(struct timings) <= PIPE_BUF,
+              "PIPE_BUF too small: can not atomically send timing info.");
+#if 0 // see comment at '#include <type_traits>' at the top of this file
+static_assert(std::is_trivially_copyable<timings>::value,
+		"struct timings must be trivially copyable");
+#else
+static_assert(std::is_standard_layout<timings>::value,
+		"struct timings must be trivially copyable");
+#endif
 
 /* Processing raw timing information should happen outside of timed code. */
 struct rawTimings {
-	pid_t pid;
-	pid_t ppid;
-	struct timespec init;
-	struct timespec ready;
-	struct timespec start;
-	struct timespec done;
+	pid_t pid             {-1};
+	pid_t ppid            {-1};
+	struct timespec init  {0, 0};
+	struct timespec ready {0, 0};
+	struct timespec start {0, 0};
+	struct timespec done  {0, 0};
 };
+#if 0 // see comment at '#include <type_traits>' at the top of this file
+static_assert(std::is_trivially_copyable<rawTimings>::value,
+		"struct rawTimings must be trivially copyable");
+#else
+static_assert(std::is_standard_layout<rawTimings>::value,
+		"struct rawTimings must be trivially copyable");
+#endif
 
 static enum childSpawn_ret writeLoop(int, const void *, size_t);
 
@@ -77,10 +122,10 @@ static enum childSpawn_ret sendRawTimings(const int[2],
                                           const struct rawTimings * const);
 
 static enum childSpawn_ret treeChildren(unsigned, unsigned,
-                                        const struct options * const);
+                                        const struct Options * const);
 static enum childSpawn_ret treeChildren_loop(const unsigned, const unsigned,
                                              const pid_t, const int[2],
-                                             const struct options * const);
+                                             const struct Options * const);
 static inline void treeNode_ready(const bool,
                                   struct rawTimings * const,
                                   const struct channels * const);
@@ -96,7 +141,7 @@ static void printTimings(unsigned, unsigned, const struct timings * const);
 typedef int threadSpawn(unsigned);
 static threadSpawn linearThreads;
 //static threadSpawn treeThreads;
-nsec_t spawnThreads(const struct options * const, thread_fn);
+nsec_t spawnThreads(const struct Options * const, thread_fn);
 
 /*
  * As write(2), but only returns when the whole buffer has been written. Prints
@@ -195,12 +240,12 @@ sendMsg(const char msg, unsigned repeat, const int ipc[2])
 		}
 	default:
 		{
-			char * msgbuf = malloc(repeat);
+			char * msgbuf = static_cast<char *>(malloc(repeat));
 			if (!msgbuf)
 				return CSERR_MALLOC;
 
 			(void)memset(msgbuf, msg, repeat);
-			int ret = writeLoop(PIPEWRITE(ipc), msgbuf, repeat);
+			childSpawn_ret ret = writeLoop(PIPEWRITE(ipc), msgbuf, repeat);
 			free(msgbuf);
 			return ret;
 		}
@@ -285,7 +330,7 @@ sendRawTimings(const int ipc[2], const struct rawTimings * rawTimings)
 
 /* Create a process tree (or list when branch >= num). */
 static enum childSpawn_ret
-treeChildren(unsigned num, unsigned branch, const struct options * const options)
+treeChildren(unsigned num, unsigned branch, const struct Options * const options)
 {
 	/* A branch of zero with non-zero children just doesn't make sense. */
 	if (!branch) {
@@ -311,7 +356,7 @@ treeChildren(unsigned num, unsigned branch, const struct options * const options
 static enum childSpawn_ret
 treeChildren_loop(const unsigned total, const unsigned branch,
                   const pid_t root, const int rootChannel[2],
-                  const struct options * const options)
+                  const struct Options * const options)
 {
 	/*
 	 * Pipes are used for simple ready/start IPC, as an alternative to using posix
@@ -331,15 +376,9 @@ treeChildren_loop(const unsigned total, const unsigned branch,
 	 * children in the tree) were received, and a 'done' message can not appear
 	 * before a child has been instructed to start its job.
 	 */
-	struct channels channels = {
-		.fromChildren = { -1, -1 },
-		.toChildren = { -1, -1 },
-		.toParent = { -1, -1 },
-		.fromParent = { -1, -1 },
-		.root = { rootChannel[0], rootChannel[1] }
-	};
+	channels channels(rootChannel);
 
-	struct rawTimings rawTimings = { .pid = -1 };
+	struct rawTimings rawTimings;
 	pid_t pid = -1;
 	unsigned remaining = total;
 
@@ -530,14 +569,14 @@ static void
 printTimings(unsigned total, unsigned branch,
              const struct timings * const timings) {
 #if 0
-	printf("pid %d - init %"PRINSEC" - "
-	       "ready %"PRINSEC" - start %"PRINSEC" - done %"PRINSEC"\n",
+	printf("pid %d - init %" PRINSEC " - "
+	       "ready %" PRINSEC " - start %" PRINSEC " - done %" PRINSEC "\n",
 	       timings->pid, timings->init, timings->ready,
 	       timings->start, timings->done);
-	printf("\t=> init -> done in %"PRINSEC" msec\n",
+	printf("\t=> init -> done in %" PRINSEC " msec\n",
 	       (timings->done - timings->init) / (1000 * 1000));
 #else
-	printf("%d, %d, %u, %u, %"PRINSEC"\n", timings->pid, timings->ppid,
+	printf("%d, %d, %u, %u, %" PRINSEC "\n", timings->pid, timings->ppid,
 	       total, branch,
 	       (timings->done - timings->init) / (1000 * 1000));
 #endif
@@ -567,7 +606,7 @@ spawnChildren(unsigned nchildren, unsigned nthreads, thread_fn benchmark __attri
 
 		/* Global timers measure wall clock time for all processes to finish. */
     struct timespec start, finish;
-		char * startbuf = malloc(nchildren);
+		char * startbuf = static_cast<char *>(malloc(nchildren));
 		if (!startbuf)
 			return CSERR_MALLOC;
 		memset(startbuf, msg_start, nchildren);
@@ -578,7 +617,7 @@ spawnChildren(unsigned nchildren, unsigned nthreads, thread_fn benchmark __attri
 			read(PIPEREAD(ipcpipe), &thread_time, sizeof(thread_time));
 			/*
 			verbose(options,
-			        "process finished; thread time: %"PRINSEC" msec\n",
+			        "process finished; thread time: %" PRINSEC " msec\n",
 			        thread_time / (1000 * 1000));
 			*/
 		}
@@ -587,7 +626,7 @@ spawnChildren(unsigned nchildren, unsigned nthreads, thread_fn benchmark __attri
 		finish.tv_nsec -= start.tv_nsec;
 		/*
 		verbose(options,
-		        "%u processes; Total time: %"PRINSEC" msec\n",
+		        "%u processes; Total time: %" PRINSEC " msec\n",
 		        num,
 		        timespecToNsec(&finish) / (1000 * 1000));
 		*/
@@ -604,7 +643,7 @@ int
 linearThreads(const unsigned num)
 {
 	thread_fn * foo = runWalk;
-	pthread_t threads[num];
+	pthread_t * threads = static_cast<pthread_t *>(malloc(sizeof(pthread_t) * num));
 	int rc = 0;
 	for (unsigned i = 0; i < num; ++i) {
 		rc = pthread_create(threads + i, NULL, foo, NULL);
@@ -616,17 +655,18 @@ linearThreads(const unsigned num)
 		}
 	}
  linearThreads_end:
+	free(threads);
 	return rc;
 }
 
-nsec_t spawnThreads(const struct options * const options, thread_fn benchmark) {
-	const struct options_generic * const gn_opt = &(options->generic);
+nsec_t spawnThreads(const struct Options * const options, thread_fn benchmark) {
+	const struct Options_generic * const gn_opt = &(options->generic);
 	nsec_t retval = 0;
 
 	for (unsigned num = gn_opt->threads_begin; num <= gn_opt->threads_end; ++num) {
 		verbose(options, "\n>>> %u threads\n", num);
 
-		pthread_t allthreads[num];
+		pthread_t * allthreads = static_cast<pthread_t *>(malloc(sizeof(pthread_t) * num));
 		pthread_barrier_t init, ready, set, go, finish;
 
 		pthread_barrier_init(&init, NULL, num);
@@ -635,7 +675,7 @@ nsec_t spawnThreads(const struct options * const options, thread_fn benchmark) {
 		pthread_barrier_init(&go, NULL, num);
 		pthread_barrier_init(&finish, NULL, num);
 
-		struct thread_context optarg = {
+		struct Thread_context optargs = {
 			options,
 			num,
 			NULL,
@@ -645,34 +685,37 @@ nsec_t spawnThreads(const struct options * const options, thread_fn benchmark) {
 		// start threads (must adhere to the 4-barrier protocol)
 		pthread_t * thread = allthreads;
 		for (unsigned i = 0; i < num; ++i) {
-			int rc = pthread_create(thread++, NULL, benchmark, &optarg);
+			int rc = pthread_create(thread++, NULL, benchmark, &optargs);
 			switch (rc) {
-			case 0:
-				continue;
-				break;
-			case EAGAIN:
-			case EINVAL:
-			case EPERM:
-				errno = rc;
-				perror("pthread_create");
-				exit(EXIT_FAILURE);
-				break;
-			default:
-				fprintf(stderr, "unknown error in pthread_create\n");
-				exit(EXIT_FAILURE);
-				break;
+				case 0:
+					continue;
+					break;
+				case EAGAIN:
+				case EINVAL:
+				case EPERM:
+					errno = rc;
+					perror("pthread_create");
+					free(allthreads);
+					exit(EXIT_FAILURE);
+					break;
+				default:
+					fprintf(stderr, "unknown error in pthread_create\n");
+					free(allthreads);
+					exit(EXIT_FAILURE);
+					break;
 			}
 		}
 
 		// wait for threads to finish and return
 		nsec_t * thread_retval = NULL;
 		for (unsigned i = 0; i < num; ++i) {
-			pthread_join(allthreads[i], (void *)&thread_retval);
+			pthread_join(allthreads[i], (void **)&thread_retval);
 			if (thread_retval) {
 				retval += *thread_retval;
 				free(thread_retval);
 			}
 		}
+		free(allthreads);
 	}
 	return retval;
 }
@@ -681,8 +724,8 @@ nsec_t spawnThreads(const struct options * const options, thread_fn benchmark) {
 // processes can be instructed to start synchronosly (to the extent made
 // possible using semaphores) but are otherwise unsynchronized until their
 // job is completed
-void spawnProcesses(const struct options * const options) {
-	//const struct options_generic * const gn_opt = &(options->generic);
+void spawnProcesses(const struct Options * const options) {
+	//const struct Options_generic * const gn_opt = &(options->generic);
 
 	const unsigned amount = 8;
 	//const unsigned branch = 1000;
@@ -714,18 +757,20 @@ void spawnProcesses(const struct options * const options) {
  * Walk Array *
  **************/
 struct runWalkSharedData {
-	struct walkArray * array;
+	struct WalkArray * array;
 	nsec_t old_avg;
 	nsec_t * timings;
 };
 
 static struct runWalkSharedData * makeRunWalkSharedData(
-	const struct options_walkarray * wa_opt)
+	const struct Options_walkarray * wa_opt)
 {
-	struct runWalkSharedData * init = malloc(sizeof(struct runWalkSharedData));
+	struct runWalkSharedData * init =
+		static_cast<runWalkSharedData *>(malloc(sizeof(struct runWalkSharedData)));
 	init->array = NULL;
 	init->old_avg = 0;
-	init->timings = malloc(sizeof(*(init->timings)) * wa_opt->repetitions);
+	init->timings =
+		static_cast<nsec_t *>(malloc(sizeof(*(init->timings)) * wa_opt->repetitions));
 	return init;
 }
 
@@ -738,9 +783,9 @@ static void freeRunWalkSharedData(struct runWalkSharedData * rwsd) {
 }
 
 void * runWalk(void * c) {
-	struct thread_context * const context = c;
-	const struct options * const options = context->options;
-	const struct options_walkarray * const wa_opt = &(options->walkArray);
+	struct Thread_context * const context = static_cast<Thread_context *>(c);
+	const struct Options * const options = context->options;
+	const struct Options_walkarray * const wa_opt = &(options->walkArray);
 
 	// local alias for context->shared to prevent cast loitering
 	// XXX note that this acts as a cached value!
@@ -756,14 +801,14 @@ void * runWalk(void * c) {
 	for ( ; len <= wa_opt->end ; len += wa_opt->step) {
 		struct timespec t_go, t_finish, t_lap;
 		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
-			shared = context->shared;
+			shared = static_cast<runWalkSharedData *>(context->shared);
 			struct timespec t_wa = makeWalkArray(wa_opt->pattern, len, &(shared->array));
 			logMakeWalkArray(options, shared->array, &t_wa);
 		}
 		pthread_barrier_wait(context->ready);
 		/*- barrier --------------------------------------------------------------*/
 
-		shared = context->shared;
+		shared = static_cast<runWalkSharedData *>(context->shared);
 		for (int i = 0; i < 3; ++i)
 			(void)walkArray(shared->array, wa_opt->aaccesses, NULL);
 
@@ -807,7 +852,7 @@ void * runWalk(void * c) {
 			double tb_new = totalbytes / (double)totalnsec;
 
 			verbose(options,
-			        "Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
+			        "Total time: %" PRINSEC " nsec (%" PRINSEC " msec)\n",
 			        totalnsec, totalnsec / (1000 * 1000));
 
 			verbose(options,
@@ -824,14 +869,15 @@ void * runWalk(void * c) {
  * Streaming Array *
  *******************/
 struct runStreamSharedData {
-	struct streamArray * array;
+	struct StreamArray * array;
 	nsec_t old_avg;
 };
 
 static struct runStreamSharedData * makeRunStreamSharedData(
-	const struct options_streamarray * sa_opt __attribute__((unused)))
+	const struct Options_streamarray * sa_opt __attribute__((unused)))
 {
-	struct runStreamSharedData * init = malloc(sizeof(struct runStreamSharedData));
+	struct runStreamSharedData * init =
+		static_cast<runStreamSharedData *>(malloc(sizeof(struct runStreamSharedData)));
 	init->array = NULL;
 	init->old_avg = 0;
 	return init;
@@ -845,9 +891,9 @@ static void freeRunStreamSharedData(struct runStreamSharedData * rssd) {
 }
 
 void * runStream(void * c) {
-	struct thread_context * const context = c;
-	const struct options * const options = context->options;
-	const struct options_streamarray * const sa_opt = &(options->streamArray);
+	struct Thread_context * const context = static_cast<Thread_context *>(c);
+	const struct Options * const options = context->options;
+	const struct Options_streamarray * const sa_opt = &(options->streamArray);
 
 	// local alias for context->shared to prevent cast loitering
 	// XXX note that this acts as a cached value!
@@ -863,13 +909,13 @@ void * runStream(void * c) {
 	for ( ; len <= sa_opt->end ; len += sa_opt->step) {
 		struct timespec t_go, t_finish, t_lap;
 		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
-			shared = context->shared;
+			shared = static_cast<runStreamSharedData *>(context->shared);
 			makeStreamArray(I64, len, &(shared->array));
 		}
 		pthread_barrier_wait(context->ready);
 		/*- barrier --------------------------------------------------------------*/
 
-		shared = context->shared;
+		shared = static_cast<runStreamSharedData *>(context->shared);
 
 		// run benchmark instance
 		pthread_barrier_wait(context->set);
@@ -903,7 +949,7 @@ void * runStream(void * c) {
 			// TODO: scale the amount of bytes fetched per thread
 
 			verbose(options,
-			        "Array size: %zd MiB | Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
+			        "Array size: %zd MiB | Total time: %" PRINSEC " nsec (%" PRINSEC " msec)\n",
 			        shared->array->size / (1024 * 1024), totalnsec, totalnsec / (1000 * 1000));
 
 			verbose(options,
@@ -921,14 +967,15 @@ void * runStream(void * c) {
  * Flops Array *
  ***************/
 struct runFlopsSharedData {
-	struct flopsArray * array;
+	struct FlopsArray * array;
 	nsec_t old_avg;
 };
 
 static struct runFlopsSharedData * makeRunFlopsSharedData(
-	const struct options_flopsarray * fa_opt __attribute__((unused)))
+	const struct Options_flopsarray * fa_opt __attribute__((unused)))
 {
-	struct runFlopsSharedData * init = malloc(sizeof(struct runFlopsSharedData));
+	struct runFlopsSharedData * init =
+		static_cast<runFlopsSharedData *>(malloc(sizeof(struct runFlopsSharedData)));
 	init->array = NULL;
 	init->old_avg = 0;
 	return init;
@@ -941,9 +988,9 @@ static void freeRunFlopsSharedData(struct runFlopsSharedData * rssd) {
 	free(rssd);
 }
 void * runFlops(void * c) {
-	struct thread_context * const context = c;
-	const struct options * const options = context->options;
-	const struct options_flopsarray * const fa_opt = &(options->flopsArray);
+	struct Thread_context * const context = static_cast<Thread_context *>(c);
+	const struct Options * const options = context->options;
+	const struct Options_flopsarray * const fa_opt = &(options->flopsArray);
 
 	// contains timing information of the last run
 	nsec_t run_totalnsec = 0;
@@ -963,14 +1010,14 @@ void * runFlops(void * c) {
 	for ( ; len <= fa_opt->end ; len += fa_opt->step) {
 		struct timespec t_go, t_finish, t_lap;
 		if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
-			shared = context->shared;
+			shared = static_cast<runFlopsSharedData *>(context->shared);
 			makeFlopsArray(SINGLE, (int)len, &(shared->array));
 			fraction = fa_opt->calculations / (len * context->nthreads);
 		}
 		pthread_barrier_wait(context->ready);
 		/*- barrier --------------------------------------------------------------*/
 
-		shared = context->shared;
+		shared = static_cast<runFlopsSharedData *>(context->shared);
 		// warmup
 		flopsArray(MADD, shared->array, len);
 
@@ -1003,7 +1050,7 @@ void * runFlops(void * c) {
 			// TODO: scale the amount of bytes fetched per thread
 
 			verbose(options,
-			        "Array size: %zd MiB | Total time: %"PRINSEC" nsec (%"PRINSEC" msec)\n",
+			        "Array size: %zd MiB | Total time: %" PRINSEC " nsec (%" PRINSEC " msec)\n",
 			        shared->array->size / (1024 * 1024), totalnsec, totalnsec / (1000 * 1000));
 
 			double totalsec = (double)totalnsec / (1000. * 1000. * 1000.);
@@ -1022,7 +1069,7 @@ void * runFlops(void * c) {
 	}
 	if (PTHREAD_BARRIER_SERIAL_THREAD == init_serial_thread) {
 		freeRunFlopsSharedData(shared);
-		nsec_t * retval = malloc(sizeof(nsec_t));
+		nsec_t * retval = static_cast<nsec_t *>(malloc(sizeof(nsec_t)));
 		*retval = run_totalnsec;
 		return retval;
 	}

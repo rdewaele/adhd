@@ -13,12 +13,12 @@ typedef long long nsec_t;
 void CSV_LogTimings(
 		FILE * log,
 		long long id,
-		struct walkArray * wa,
+		struct WalkArray * wa,
 		nsec_t nsec,
 		nsec_t stddev);
 
 // user reporting
-void verbose(const struct options * options, const char *format, ...);
+void verbose(const struct Options * options, const char *format, ...);
 
 // nanosecond conversion
 static inline nsec_t timespecToNsec(const struct timespec * const t) {
@@ -30,12 +30,12 @@ const char * bool2onoff(bool b);
 
 // walkArray creation report
 void logMakeWalkArray(
-		const struct options * const options,
-		const struct walkArray * const array,
+		const struct Options * const options,
+		const struct WalkArray * const array,
 		struct timespec * elapsed);
 
 // walkArray performance report
 nsec_t logWalkArray(
-		const struct options * const options,
+		const struct Options * const options,
 		const nsec_t * const timings,
 		nsec_t old_avg);

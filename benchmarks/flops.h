@@ -5,7 +5,7 @@
 enum floating_t {SINGLE, DOUBLE};
 enum flop_t {ADD,MUL,MADD};
 
-struct flopsArray {
+struct FlopsArray {
 	enum floating_t precision;
 	int len; // needs to be signed for icc to vectorize ...
 	size_t size;
@@ -26,10 +26,10 @@ struct flopsArray {
 void makeFlopsArray(
 		enum floating_t precision,
 		int len,
-		struct flopsArray ** result);
+		struct FlopsArray ** result);
 
-void freeFlopsArray(struct flopsArray * array);
+void freeFlopsArray(struct FlopsArray * array);
 
-double flopsArray(enum flop_t operation, struct flopsArray * array, unsigned long long calculations);
+double flopsArray(enum flop_t operation, struct FlopsArray * array, unsigned long long calculations);
 
 float flops_madd16(float init, const long long iterations);

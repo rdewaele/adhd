@@ -30,3 +30,6 @@ adhd
 
 # .csv files, resulting from test runs
 *.csv
+
+# ctags tags file
+tags

@@ -5,14 +5,14 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void fvec_init(int len, float * restrict vec) {
+static void fvec_init(int len, float * vec) {
 	int idx;
 	float init;
 	for (idx = 0, init = 0; idx < len; ++idx, ++init)
 		vec[idx] = init;
 }
 
-static void dvec_init(int len, double * restrict vec) {
+static void dvec_init(int len, double * vec) {
 	int idx;
 	double init;
 	for (idx = 0, init = 0; idx < len; ++idx, ++init)
@@ -21,7 +21,7 @@ static void dvec_init(int len, double * restrict vec) {
 
 // aligned allocation to prevent crossing cache line boundaries for data that
 // fits on a single cache line
-static void allocFlopsArray(struct flopsArray * array) {
+static void allocFlopsArray(struct FlopsArray * array) {
 	size_t align;
 	void * data, * scale, * offset;
 
@@ -52,11 +52,11 @@ static void allocFlopsArray(struct flopsArray * array) {
 		align = sizeof(void*);
 
 	int ret;
-	if (0 != (ret = posix_memalign(data, align, array->size)))
+	if (0 != (ret = posix_memalign(&data, align, array->size)))
 		fprintf(stderr, "data memory allocation failed: %s\n", strerror(ret));
-	if (0 != (ret = posix_memalign(scale, align, array->size)))
+	if (0 != (ret = posix_memalign(&scale, align, array->size)))
 		fprintf(stderr, "scale memory allocation failed: %s\n", strerror(ret));
-	if (0 != (ret = posix_memalign(offset, align, array->size)))
+	if (0 != (ret = posix_memalign(&offset, align, array->size)))
 		fprintf(stderr, "offset memory allocation failed: %s\n", strerror(ret));
 
 	switch (array->precision) {
@@ -76,16 +76,16 @@ static void allocFlopsArray(struct flopsArray * array) {
 void makeFlopsArray(
 		enum floating_t precision,
 		int len,
-		struct flopsArray ** result)
+		struct FlopsArray ** result)
 {
-	*result = malloc(sizeof(struct flopsArray));
+	*result = static_cast<FlopsArray *>(malloc(sizeof(struct FlopsArray)));
 
 	(*result)->precision = precision;
 	(*result)->len = len;
 	allocFlopsArray(*result);
 }
 
-void freeFlopsArray(struct flopsArray * array) {
+void freeFlopsArray(struct FlopsArray * array) {
 	switch (array->precision) {
 		case SINGLE:
 			free(array->vec.sp.data);
@@ -141,49 +141,49 @@ static const double dx = 0.9;
 // for some currently unknown reason, icc refrains from vectorizing this loop
 // when length is of unsigned type; adding the ivdep pragma is another
 // solution to this problem, which allows unsigned length ... ehm ... ?
-static float fvec_add(const int len, float * restrict src, const long long iterations) {
+static float fvec_add(const int len, float * src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] + fc;
 	return *src;
 }
 
-static float fvec_mul(const int len, float * restrict src, const long long iterations) {
+static float fvec_mul(const int len, float * src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] * fc;
 	return *src;
 }
 
-static float fvec_madd(const int len, float * restrict src, const long long iterations) {
+static float fvec_madd(const int len, float * src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] * fx + fc;
 	return *src;
 }
 
-static double dvec_add(const int len, double * restrict src, const long long iterations) {
+static double dvec_add(const int len, double * src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] + dc;
 	return *src;
 }
 
-static double dvec_mul(const int len, double * restrict src, const long long iterations) {
+static double dvec_mul(const int len, double * src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] * dc;
 	return *src;
 }
 
-static double dvec_madd(const int len, double * restrict src, const long long iterations) {
+static double dvec_madd(const int len, double * src, const long long iterations) {
 	for (long iter = 0; iter < iterations; ++iter)
 		for (int idx = 0; idx < len; ++idx)
 			src[idx] = src[idx] * dx + dc;
 	return *src;
 }
 
-double flopsArray(enum flop_t operation, struct flopsArray * array, unsigned long long iterations) {
+double flopsArray(enum flop_t operation, struct FlopsArray * array, unsigned long long iterations) {
 	double result = 0;
 	switch (array->precision) {
 		case SINGLE:
