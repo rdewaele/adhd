@@ -4,7 +4,7 @@ PROGRAM = arraywalk
 all: $(PROGRAM)
 
 LIBSOURCES = arraywalk.cpp
-SOURCES = cpp_main.cpp
+SOURCES = main.cpp
 
 LIBOBJECTS = $(LIBSOURCES:.cpp=.o)
 OBJECTS = $(SOURCES:.cpp=.o)
