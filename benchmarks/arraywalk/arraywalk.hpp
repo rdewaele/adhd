@@ -14,7 +14,7 @@ namespace arraywalk {
 	template <typename INDEX_T>
 		class ArrayWalk {
 			public:
-				ArrayWalk(INDEX_T length, enum pattern pattern);
+				ArrayWalk(size_t size, size_t align, pattern ptrn);
 				~ArrayWalk();
 				void reset(enum pattern);
 

@@ -2,6 +2,7 @@
 #include <exception>
 #include <iostream>
 #include <random>
+#include <stdexcept>
 #include <type_traits>
 
 #include "arraywalk.hpp"
@@ -10,15 +11,28 @@
 using namespace std;
 
 namespace arraywalk {
+	static const char NOT_INDEXABLE[] =
+		"Walking array is too long or index type range is too small.";
+
 	template <typename INDEX_T>
-		ArrayWalk<INDEX_T>::ArrayWalk(INDEX_T _length, enum pattern pattern):
-			length(_length),
-			array(reinterpret_cast<INDEX_T *>(new INDEX_T[_length]))
+	ArrayWalk<INDEX_T>::ArrayWalk(size_t size, size_t align, pattern ptrn)
 	{
-		cout << "array elements: " << static_cast<uint64_t>(_length) << endl;
-		cout << "element size: " << sizeof(INDEX_T) << endl;
-		cout << "total array size: " << static_cast<uint64_t>(sizeof(INDEX_T) * _length) << endl;
-		switch (pattern) {
+		size_t req_length = size / sizeof(INDEX_T);
+
+		// numeric_limits might not be specialized for non-standard types
+		// (e.g. __int128 with icc)
+		INDEX_T rep_length = static_cast<INDEX_T>(req_length);
+		if (rep_length != req_length)
+			throw length_error(NOT_INDEXABLE);
+
+		cout << "Walking Array: " << req_length << " elements x "
+			<< sizeof(INDEX_T) << " bytes = " << req_length * sizeof(INDEX_T)
+			<< " bytes" << endl;
+
+		// TODO: align
+		array = new INDEX_T[req_length + align / sizeof(INDEX_T) + 1];
+		length = static_cast<INDEX_T>(req_length);
+		switch (ptrn) {
 			case RANDOM: random(); break;
 			case INCREASING: increasing(); break;
 			case DECREASING: decreasing(); break;
