@@ -19,6 +19,7 @@ static void report(size_t idx_size, size_t length, uint64_t cycles, uint64_t rea
 	cout << "~cycles per read: " << (double) cycles / (double) reads << endl << endl;
 }
 
+// may throw domain_error when requested alignment is not a power of two
 template <typename INDEX_T>
 static void run_test(size_t arraysize, uint32_t loops) {
 	uint64_t cycles = 0;
@@ -27,7 +28,8 @@ static void run_test(size_t arraysize, uint32_t loops) {
 		ArrayWalk<INDEX_T> test(arraysize, 128, RANDOM);
 		test.timedwalk_loc1(loops, cycles, reads);
 		report(sizeof(INDEX_T), test.getLength(), cycles, reads);
-	} catch (length_error & e) {}
+	}
+	catch (length_error & e) { /* deliberately ignored */ }
 }
 
 int main() {

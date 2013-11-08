@@ -8,6 +8,7 @@
 #include "arraywalk.hpp"
 #include "prettyprint.hpp"
 #include "rdtsc.h"
+#include "util.hpp"
 
 using namespace std;
 using namespace prettyprint;
@@ -26,6 +27,10 @@ namespace arraywalk {
 	static const char NEED_FOUR_ELEMENTS[] =
 		"Walking array is too short to generate random access patterns.";
 
+	// Memory alignment must be a power of two.
+	static const char NOT_POW2_ALIGN[] =
+		"Requested memory alignment for the walking array is not a power of two.";
+
 	template <typename INDEX_T>
 	ArrayWalk<INDEX_T>::ArrayWalk(size_t size, size_t align, pattern ptrn):
 		length(size / sizeof(INDEX_T))
@@ -38,6 +43,9 @@ namespace arraywalk {
 
 		if (length < 4)
 			throw length_error(NEED_FOUR_ELEMENTS);
+
+		if (!util::isPowerOfTwo<size_t>(align))
+			throw domain_error(NOT_POW2_ALIGN);
 
 		// TODO: align
 		array = new INDEX_T[length + align / sizeof(INDEX_T) + 1];
