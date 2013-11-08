@@ -59,7 +59,7 @@ analyze:
 valgrind: $(PROGRAM)
 	valgrind -v --leak-check=full --show-reachable=yes ./$<
 
-$(MAKEDEP): $(SOURCES)
+$(MAKEDEP): $(SOURCES) $(LIBSOURCES)
 	$(CXX) $(CXXFLAGS) -MM $^ > $@
 
 .PHONY: all clean analyze test run
