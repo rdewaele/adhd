@@ -16,6 +16,9 @@ namespace arraywalk {
 			public:
 				ArrayWalk(size_t size, size_t align, pattern ptrn);
 				~ArrayWalk();
+
+				size_t getLength();
+
 				void reset(enum pattern);
 
 				INDEX_T timedwalk_loc(unsigned, uint_fast32_t, uint64_t &, uint64_t &);
@@ -41,8 +44,9 @@ namespace arraywalk {
 				TIMEDWALK_LOC_DEC(20);
 
 				INDEX_T timedwalk_vec(uint_fast32_t steps, uint64_t & cycles, uint64_t & reads);
+
 			private:
-				INDEX_T length;
+				const size_t length;
 				INDEX_T * array;
 
 				void random();

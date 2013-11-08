@@ -6,32 +6,41 @@
 #include <type_traits>
 
 #include "arraywalk.hpp"
+#include "prettyprint.hpp"
 #include "rdtsc.h"
 
 using namespace std;
+using namespace prettyprint;
 
 namespace arraywalk {
+	// The tested range of memory addresses will be smaller than
+	// indicated/requested by the size parameter if INDEX_T's range is
+	// insufficiently large.
 	static const char NOT_INDEXABLE[] =
 		"Walking array is too long or index type range is too small.";
 
-	template <typename INDEX_T>
-	ArrayWalk<INDEX_T>::ArrayWalk(size_t size, size_t align, pattern ptrn)
-	{
-		size_t req_length = size / sizeof(INDEX_T);
+	// Arrays with three or less elements can not encode a random access pattern
+	// (as opposed to a sequential pattern), rendering the random tests invalid.
+	// (Additionally, tests with arrays of smaller size than a cache line seem
+	//  questionable.)
+	static const char NEED_FOUR_ELEMENTS[] =
+		"Walking array is too short to generate random access patterns.";
 
+	template <typename INDEX_T>
+	ArrayWalk<INDEX_T>::ArrayWalk(size_t size, size_t align, pattern ptrn):
+		length(size / sizeof(INDEX_T))
+	{
 		// numeric_limits might not be specialized for non-standard types
 		// (e.g. __int128 with icc)
-		INDEX_T rep_length = static_cast<INDEX_T>(req_length);
-		if (rep_length != req_length)
+		INDEX_T rep_length = static_cast<INDEX_T>(length);
+		if (rep_length != length)
 			throw length_error(NOT_INDEXABLE);
 
-		cout << "Walking Array: " << req_length << " elements x "
-			<< sizeof(INDEX_T) << " bytes = " << req_length * sizeof(INDEX_T)
-			<< " bytes" << endl;
+		if (length < 4)
+			throw length_error(NEED_FOUR_ELEMENTS);
 
 		// TODO: align
-		array = new INDEX_T[req_length + align / sizeof(INDEX_T) + 1];
-		length = static_cast<INDEX_T>(req_length);
+		array = new INDEX_T[length + align / sizeof(INDEX_T) + 1];
 		switch (ptrn) {
 			case RANDOM: random(); break;
 			case INCREASING: increasing(); break;
@@ -45,6 +54,11 @@ namespace arraywalk {
 			delete[] array;
 		}
 
+	template <typename INDEX_T>
+		size_t ArrayWalk<INDEX_T>::getLength()
+		{
+			return length;
+		}
 
 	// the random library does not recognise __uint128_t as an integral type: specialize
 	template <>

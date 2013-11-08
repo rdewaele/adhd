@@ -3,7 +3,7 @@ PROGRAM = arraywalk
 
 all: $(PROGRAM)
 
-LIBSOURCES = arraywalk.cpp
+LIBSOURCES = arraywalk.cpp prettyprint.cpp
 SOURCES = main.cpp
 
 LIBOBJECTS = $(LIBSOURCES:.cpp=.o)
@@ -56,8 +56,8 @@ clean:
 analyze:
 	clang $(CXXFLAGS) --analyze $(SOURCES) $(LIBSOURCES)
 
-valgrind: $(PROGRAMS) $(VALGRIND_CONF)
-	valgrind -v --leak-check=full --show-reachable=yes ./$< -i -c $(VALGRIND_CONF)
+valgrind: $(PROGRAM)
+	valgrind -v --leak-check=full --show-reachable=yes ./$<
 
 $(MAKEDEP): $(SOURCES)
 	$(CXX) $(CXXFLAGS) -MM $^ > $@
