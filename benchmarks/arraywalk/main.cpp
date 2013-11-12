@@ -14,8 +14,8 @@ using namespace prettyprint;
 static void report(size_t idx_size, size_t length, uint64_t cycles, uint64_t reads) {
 	cout << length << " elements x " << Bytes{idx_size} << " = "
 		<< Bytes{length * idx_size} << endl;
-	cout << "cycles: " << cycles << endl;
-	cout << "total reads: " << reads << " (" << Bytes{reads * idx_size} << ")" << endl;
+	cout << "cycles: " << cycles << " | ";
+	cout << "reads: " << reads << " (" << Bytes{reads * idx_size} << ")" << endl;
 	cout << "~cycles per read: " << (double) cycles / (double) reads << endl << endl;
 }
 
@@ -25,7 +25,7 @@ static void run_test(size_t arraysize, uint32_t loops) {
 	uint64_t cycles = 0;
 	uint64_t reads = 0;
 	try {
-		ArrayWalk<INDEX_T> test(arraysize, 128, RANDOM);
+		ArrayWalk<INDEX_T> test(arraysize, 1 << 12, RANDOM);
 		test.timedwalk_loc1(loops, cycles, reads);
 		report(sizeof(INDEX_T), test.getLength(), cycles, reads);
 	}

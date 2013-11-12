@@ -1,4 +1,5 @@
 #include <cassert>
+#include <cstddef>
 #include <exception>
 #include <iostream>
 #include <random>
@@ -47,8 +48,13 @@ namespace arraywalk {
 		if (!util::isPowerOfTwo<size_t>(align))
 			throw domain_error(NOT_POW2_ALIGN);
 
-		// TODO: align
-		array = new INDEX_T[length + align / sizeof(INDEX_T) + 1];
+		// allocate with overhead to cater for later alignment
+		const size_t overhead = 1 + align / sizeof(INDEX_T);
+		arraymem = new INDEX_T[length + overhead];
+		const intptr_t aligned =
+			(reinterpret_cast<intptr_t>(arraymem) + align) & (~(align - 1));
+		array = reinterpret_cast<INDEX_T *>(aligned);
+
 		switch (ptrn) {
 			case RANDOM: random(); break;
 			case INCREASING: increasing(); break;
@@ -59,7 +65,7 @@ namespace arraywalk {
 	template <typename INDEX_T>
 		ArrayWalk<INDEX_T>::~ArrayWalk()
 		{
-			delete[] array;
+			delete[] arraymem;
 		}
 
 	template <typename INDEX_T>

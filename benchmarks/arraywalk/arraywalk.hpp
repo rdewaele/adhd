@@ -47,6 +47,7 @@ namespace arraywalk {
 
 			private:
 				const size_t length;
+				INDEX_T * arraymem;
 				INDEX_T * array;
 
 				void random();
