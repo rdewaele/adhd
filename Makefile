@@ -38,6 +38,9 @@ MAKEDEP = .make.dep
 
 all: $(PROGRAM)
 
+run: $(PROGRAM)
+	./$<
+
 $(PROGRAM): $(OBJECTS)
 	$(CXX) $(CXXFLAGS) $^ $(LDFLAGS) -o $@
 
