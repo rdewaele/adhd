@@ -25,6 +25,22 @@ namespace arraywalk {
 				void reset(enum pattern);
 
 				INDEX_T timedwalk_loc(unsigned, uint_fast32_t, uint64_t &, uint64_t &);
+				INDEX_T timedwalk_vec(uint_fast32_t steps, uint64_t & cycles, uint64_t & reads);
+
+			private:
+				size_t length;
+				INDEX_T * arraymem;
+				INDEX_T * array;
+
+				void random();
+				void increasing();
+				void decreasing();
+
+				bool isFullCycle();
+
+				std::default_random_engine rng;
+				INDEX_T randomIndex(INDEX_T minimum);
+
 				TIMEDWALK_LOC_DEC(1);
 				TIMEDWALK_LOC_DEC(2);
 				TIMEDWALK_LOC_DEC(3);
@@ -45,21 +61,5 @@ namespace arraywalk {
 				TIMEDWALK_LOC_DEC(18);
 				TIMEDWALK_LOC_DEC(19);
 				TIMEDWALK_LOC_DEC(20);
-
-				INDEX_T timedwalk_vec(uint_fast32_t steps, uint64_t & cycles, uint64_t & reads);
-
-			private:
-				size_t length;
-				INDEX_T * arraymem;
-				INDEX_T * array;
-
-				void random();
-				void increasing();
-				void decreasing();
-
-				bool isFullCycle();
-
-				std::default_random_engine rng;
-				INDEX_T randomIndex(INDEX_T minimum);
 		};
 }

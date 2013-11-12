@@ -26,7 +26,7 @@ static void run_test(size_t arraysize, uint32_t loops) {
 	uint64_t reads = 0;
 	try {
 		ArrayWalk<INDEX_T> test(arraysize, 1 << 12, RANDOM);
-		test.timedwalk_loc1(loops, cycles, reads);
+		test.timedwalk_loc(1, loops, cycles, reads);
 		report(sizeof(INDEX_T), test.getLength(), cycles, reads);
 	}
 	catch (length_error & e) { /* deliberately ignored */ }
@@ -50,11 +50,11 @@ int main() {
 	uint64_t reads = 0;
 	auto test = ArrayWalk<uint64_t>();
 	try {
-		test.timedwalk_loc1(loops, cycles, reads);
+		test.timedwalk_loc(1, loops, cycles, reads);
 	}
 	catch (length_error & e) { /* deliberately ignored */ }
 	test.init(arraysize, 1 << 12, RANDOM);
-	test.timedwalk_loc1(loops, cycles, reads);
+	test.timedwalk_loc(1, loops, cycles, reads);
 	report(sizeof(uint64_t), test.getLength(), cycles, reads);
 
 	return 0;
