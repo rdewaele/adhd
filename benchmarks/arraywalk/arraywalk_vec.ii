@@ -1,5 +1,6 @@
 template <typename INDEX_T>
-INDEX_T ArrayWalk<INDEX_T>::timedwalk_vec(uint_fast32_t steps, uint64_t & cycles, uint64_t & reads)
+INDEX_T ArrayWalk<INDEX_T>::timedwalk_vec(uint_fast32_t MiB,
+		uint64_t & cycles, uint64_t & reads)
 {
 	if (NULL == array)
 		throw length_error(NOT_INITIALIZED);
@@ -11,10 +12,10 @@ INDEX_T ArrayWalk<INDEX_T>::timedwalk_vec(uint_fast32_t steps, uint64_t & cycles
 	for (INDEX_T idx = 0; idx < indep; ++idx)
 		idxs[idx] = randomIndex(0);
 
-	reads = steps * indep * mb_reads;
+	reads = MiB * indep * mb_reads;
 
 	cStart = rdtsc();
-	for (uint_fast32_t step = 0; step < steps; ++step)
+	for (uint_fast32_t step = 0; step < MiB; ++step)
 		for (int i = 0; i < mb_reads; ++i)
 			for (INDEX_T idx = 0; idx < indep; ++idx)
 				idxs[idx] = array[idxs[idx]];

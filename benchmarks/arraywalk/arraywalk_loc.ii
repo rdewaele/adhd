@@ -62,7 +62,7 @@
 #define SUM20(T) static_cast<T>(SUM19(T) + idx19)
 
 #define TIMEDWALK_LOC(NUM) template <typename INDEX_T> \
-	INDEX_T ArrayWalk<INDEX_T>::timedwalk_loc##NUM(uint_fast32_t steps, \
+	INDEX_T ArrayWalk<INDEX_T>::timedwalk_loc##NUM(uint_fast32_t MiB, \
 	                                               uint64_t & cycles, \
 	                                               uint64_t & reads) \
 	{ \
@@ -72,9 +72,9 @@
 		uint64_t cStart, cEnd; \
 		constexpr long unsigned mb_reads = (1 << 20) / sizeof(INDEX_T); \
 		DEF##NUM; \
-		reads = NUM * steps * mb_reads; \
+		reads = NUM * MiB * mb_reads; \
 		cStart = rdtsc(); \
-		for (uint_fast32_t step = 0; step < steps; ++step) \
+		for (uint_fast32_t step = 0; step < MiB; ++step) \
 			for (int i = 0; i < mb_reads; ++i) { \
 				SET##NUM(array); \
 			} \
@@ -106,12 +106,12 @@ TIMEDWALK_LOC(20)
 
 template <typename INDEX_T>
 INDEX_T ArrayWalk<INDEX_T>::timedwalk_loc(unsigned locs,
-	                                        uint_fast32_t steps,
+	                                        uint_fast32_t MiB,
 	                                        uint64_t & cycles,
 	                                        uint64_t & reads)
 {
 #define TIMEDWALK_LOC_CASE(NUM) \
-	case NUM: return timedwalk_loc##NUM(steps, cycles, reads)
+	case NUM: return timedwalk_loc##NUM(MiB, cycles, reads)
 	switch (locs) {
 		TIMEDWALK_LOC_CASE(1);
 		TIMEDWALK_LOC_CASE(2);

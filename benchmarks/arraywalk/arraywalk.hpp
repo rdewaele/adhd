@@ -19,13 +19,14 @@ namespace arraywalk {
 				~ArrayWalk();
 
 				void init(size_t size, size_t align, pattern ptrn);
+				void reset(enum pattern);
 
 				size_t getLength();
 
-				void reset(enum pattern);
-
-				INDEX_T timedwalk_loc(unsigned, uint_fast32_t, uint64_t &, uint64_t &);
-				INDEX_T timedwalk_vec(uint_fast32_t steps, uint64_t & cycles, uint64_t & reads);
+				INDEX_T timedwalk_loc(unsigned locs, uint_fast32_t MiB,
+						uint64_t & cycles, uint64_t & reads);
+				INDEX_T timedwalk_vec(uint_fast32_t MiB,
+						uint64_t & cycles, uint64_t & reads);
 
 			private:
 				size_t length;
