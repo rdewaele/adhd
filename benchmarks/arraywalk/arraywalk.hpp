@@ -14,8 +14,11 @@ namespace arraywalk {
 	template <typename INDEX_T>
 		class ArrayWalk {
 			public:
+				ArrayWalk();
 				ArrayWalk(size_t size, size_t align, pattern ptrn);
 				~ArrayWalk();
+
+				void init(size_t size, size_t align, pattern ptrn);
 
 				size_t getLength();
 
@@ -46,7 +49,7 @@ namespace arraywalk {
 				INDEX_T timedwalk_vec(uint_fast32_t steps, uint64_t & cycles, uint64_t & reads);
 
 			private:
-				const size_t length;
+				size_t length;
 				INDEX_T * arraymem;
 				INDEX_T * array;
 

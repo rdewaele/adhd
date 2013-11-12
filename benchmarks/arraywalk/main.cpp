@@ -33,15 +33,29 @@ static void run_test(size_t arraysize, uint32_t loops) {
 }
 
 int main() {
+	constexpr uint32_t loops = 1 << 7;
+
+	// standard use case test
 	size_t arraysize;
 	for (arraysize = 1ul << 7; arraysize <= 1ul << 10; arraysize *= 2) {
-		constexpr uint32_t loops = 1 << 7;
-
 		run_test<uint8_t>(arraysize, loops);
 		run_test<uint16_t>(arraysize, loops);
 		run_test<uint32_t>(arraysize, loops);
 		run_test<uint64_t>(arraysize, loops);
 		run_test<__uint128_t>(arraysize, loops);
 	}
+
+	// default constructor test
+	uint64_t cycles = 0;
+	uint64_t reads = 0;
+	auto test = ArrayWalk<uint64_t>();
+	try {
+		test.timedwalk_loc1(loops, cycles, reads);
+	}
+	catch (length_error & e) { /* deliberately ignored */ }
+	test.init(arraysize, 1 << 12, RANDOM);
+	test.timedwalk_loc1(loops, cycles, reads);
+	report(sizeof(uint64_t), test.getLength(), cycles, reads);
+
 	return 0;
 }

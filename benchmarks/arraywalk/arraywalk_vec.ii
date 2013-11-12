@@ -1,6 +1,9 @@
 template <typename INDEX_T>
 INDEX_T ArrayWalk<INDEX_T>::timedwalk_vec(uint_fast32_t steps, uint64_t & cycles, uint64_t & reads)
 {
+	if (NULL == array)
+		throw length_error(NOT_INITIALIZED);
+
 	uint64_t cStart, cEnd;
 	constexpr long unsigned mb_reads = (1 << 20) / sizeof(INDEX_T);
 	constexpr unsigned indep = 15;

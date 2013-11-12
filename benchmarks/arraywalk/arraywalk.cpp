@@ -32,10 +32,36 @@ namespace arraywalk {
 	static const char NOT_POW2_ALIGN[] =
 		"Requested memory alignment for the walking array is not a power of two.";
 
+	// Default-constructed class does not have an array to walk, and walking it
+	// is therefore impossible.
+	static const char NOT_INITIALIZED[] =
+		"Default-constructed walking array was not initialized.";
+
+	template <typename INDEX_T>
+	ArrayWalk<INDEX_T>::ArrayWalk():
+		length(0),
+		arraymem(NULL),
+		array(NULL)
+	{}
+
 	template <typename INDEX_T>
 	ArrayWalk<INDEX_T>::ArrayWalk(size_t size, size_t align, pattern ptrn):
-		length(size / sizeof(INDEX_T))
+		ArrayWalk()
 	{
+		init(size, align, ptrn);
+	}
+
+	template <typename INDEX_T>
+	ArrayWalk<INDEX_T>::~ArrayWalk()
+	{
+		delete[] arraymem;
+	}
+
+	template <typename INDEX_T>
+	void ArrayWalk<INDEX_T>::init(size_t size, size_t align, pattern ptrn)
+	{
+		length = size / sizeof(INDEX_T);
+
 		// numeric_limits might not be specialized for non-standard types
 		// (e.g. __int128 with icc)
 		INDEX_T rep_length = static_cast<INDEX_T>(length);
@@ -49,7 +75,9 @@ namespace arraywalk {
 			throw domain_error(NOT_POW2_ALIGN);
 
 		// allocate with overhead to cater for later alignment
+		// arraymem must be NULL or previously allocated by this function
 		const size_t overhead = 1 + align / sizeof(INDEX_T);
+		delete[] arraymem;
 		arraymem = new INDEX_T[length + overhead];
 		const intptr_t aligned =
 			(reinterpret_cast<intptr_t>(arraymem) + align) & (~(align - 1));
@@ -63,97 +91,91 @@ namespace arraywalk {
 	}
 
 	template <typename INDEX_T>
-		ArrayWalk<INDEX_T>::~ArrayWalk()
-		{
-			delete[] arraymem;
-		}
-
-	template <typename INDEX_T>
-		size_t ArrayWalk<INDEX_T>::getLength()
-		{
-			return length;
-		}
+	size_t ArrayWalk<INDEX_T>::getLength()
+	{
+		return length;
+	}
 
 	// the random library does not recognise __uint128_t as an integral type: specialize
 	template <>
-		__uint128_t ArrayWalk<__uint128_t>::randomIndex(__uint128_t minimum)
-		{
-			const uint64_t min = static_cast<uint64_t>(minimum);
-			const uint64_t max = static_cast<uint64_t>(length - 1);
-			uniform_int_distribution<uint64_t> dis(min, max);
-			return dis(rng);
-		}
+	__uint128_t ArrayWalk<__uint128_t>::randomIndex(__uint128_t minimum)
+	{
+		const uint64_t min = static_cast<uint64_t>(minimum);
+		const uint64_t max = static_cast<uint64_t>(length - 1);
+		uniform_int_distribution<uint64_t> dis(min, max);
+		return dis(rng);
+	}
 
 	template <typename INDEX_T>
-		INDEX_T ArrayWalk<INDEX_T>::randomIndex(INDEX_T minimum)
-		{
-			uniform_int_distribution<INDEX_T> dis(minimum, static_cast<INDEX_T>(length - 1));
-			return dis(rng);
-		}
+	INDEX_T ArrayWalk<INDEX_T>::randomIndex(INDEX_T minimum)
+	{
+		uniform_int_distribution<INDEX_T> dis(minimum, static_cast<INDEX_T>(length - 1));
+		return dis(rng);
+	}
 
 	template <typename INDEX_T>
-		void ArrayWalk<INDEX_T>::random()
-		{
-			if (0 == length)
-				return;
+	void ArrayWalk<INDEX_T>::random()
+	{
+		if (0 == length)
+			return;
 
-			// initialization step encodes index as values
-			for (INDEX_T idx = 0; idx < length; ++idx)
-				array[idx] = idx;
+		// initialization step encodes index as values
+		for (INDEX_T idx = 0; idx < length; ++idx)
+			array[idx] = idx;
 
-			// shuffle the array
-			// idx goes up to the penultimate element because element at idx is
-			// swapped with an element at > idx
-			INDEX_T rnd;
-			INDEX_T swap;
-			for (INDEX_T idx = 0; idx < length - 1; ++idx) {
-				rnd = randomIndex(static_cast<INDEX_T>(idx + 1));
-				swap = array[idx];
-				array[idx] = array[rnd];
-				array[rnd] = swap;
+		// shuffle the array
+		// idx goes up to the penultimate element because element at idx is
+		// swapped with an element at > idx
+		INDEX_T rnd;
+		INDEX_T swap;
+		for (INDEX_T idx = 0; idx < length - 1; ++idx) {
+			rnd = randomIndex(static_cast<INDEX_T>(idx + 1));
+			swap = array[idx];
+			array[idx] = array[rnd];
+			array[rnd] = swap;
+		}
+	}
+
+	template <typename INDEX_T>
+	void ArrayWalk<INDEX_T>::increasing()
+	{
+		INDEX_T idx;
+		for (idx = 0; idx < length - 1; ++idx)
+			array[idx] = static_cast<INDEX_T>(idx + 1);
+		array[idx] = 0;
+	}
+
+	template <typename INDEX_T>
+	void ArrayWalk<INDEX_T>::decreasing()
+	{
+		array[0] = static_cast<INDEX_T>(length - 1);
+		for (INDEX_T idx = 1; idx < length; ++idx)
+			array[idx] = static_cast<INDEX_T>(idx - 1);
+	}
+
+	template <typename INDEX_T>
+	bool ArrayWalk<INDEX_T>::isFullCycle()
+	{
+		INDEX_T i, idx;
+		bool * visited = new bool[length];
+		bool allVisited = true;
+
+		for (idx = 0; idx < length; ++idx)
+			visited[idx] = false;
+
+		for (i = 0, idx = 0; i < length; ++i, idx = array[idx])
+			visited[idx] = true;
+
+		for (idx = 0; idx < length; ++idx)
+			if (!visited[idx]) {
+				allVisited = false;
+				break;
 			}
-		}
 
-	template <typename INDEX_T>
-		void ArrayWalk<INDEX_T>::increasing()
-		{
-			INDEX_T idx;
-			for (idx = 0; idx < length - 1; ++idx)
-				array[idx] = static_cast<INDEX_T>(idx + 1);
-			array[idx] = 0;
-		}
-
-	template <typename INDEX_T>
-		void ArrayWalk<INDEX_T>::decreasing()
-		{
-			array[0] = static_cast<INDEX_T>(length - 1);
-			for (INDEX_T idx = 1; idx < length; ++idx)
-				array[idx] = static_cast<INDEX_T>(idx - 1);
-		}
-
-	template <typename INDEX_T>
-		bool ArrayWalk<INDEX_T>::isFullCycle()
-		{
-			INDEX_T i, idx;
-			bool * visited = new bool[length];
-			bool allVisited = true;
-
-			for (idx = 0; idx < length; ++idx)
-				visited[idx] = false;
-
-			for (i = 0, idx = 0; i < length; ++i, idx = array[idx])
-				visited[idx] = true;
-
-			for (idx = 0; idx < length; ++idx)
-				if (!visited[idx]) {
-					allVisited = false;
-					break;
-				}
-
-			delete[] visited;
-			assert(allVisited); // crash in debug builds
-			return allVisited;
-		}
+		delete[] visited;
+		assert(allVisited); // crash in debug builds
+		return allVisited;
+	}
 
 #include "arraywalk_loc.ii"
 #include "arraywalk_vec.ii"

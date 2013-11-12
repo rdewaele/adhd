@@ -66,6 +66,9 @@
 	                                               uint64_t & cycles, \
 	                                               uint64_t & reads) \
 	{ \
+		if (NULL == array) \
+			throw length_error(NOT_INITIALIZED); \
+		\
 		uint64_t cStart, cEnd; \
 		constexpr long unsigned mb_reads = (1 << 20) / sizeof(INDEX_T); \
 		DEF##NUM; \
