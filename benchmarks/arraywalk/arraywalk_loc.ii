@@ -70,12 +70,12 @@
 			throw length_error(NOT_INITIALIZED); \
 		\
 		uint64_t cStart, cEnd; \
-		constexpr long unsigned mb_reads = (1 << 20) / sizeof(INDEX_T); \
+		constexpr unsigned long mb_reads = (1 << 20) / sizeof(INDEX_T); \
 		DEF##NUM; \
 		reads = NUM * MiB * mb_reads; \
 		cStart = rdtsc(); \
 		for (uint_fast32_t step = 0; step < MiB; ++step) \
-			for (int i = 0; i < mb_reads; ++i) { \
+			for (unsigned long i = 0; i < mb_reads; ++i) { \
 				SET##NUM(array); \
 			} \
 		cEnd = rdtsc(); \
