@@ -1,3 +1,10 @@
+Licence
+=======
+
+Unless otherwise noted, all files in this work are under the license
+specified in the LICENSE.md file.
+
+
 adhd
 ====
 
