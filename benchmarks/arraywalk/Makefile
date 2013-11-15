@@ -3,7 +3,7 @@ PROGRAM = arraywalk
 
 all: $(PROGRAM)
 
-LIBSOURCES = arraywalk.cpp prettyprint.cpp
+LIBSOURCES = arraywalk.cpp config.cpp prettyprint.cpp
 SOURCES = main.cpp
 
 LIBOBJECTS = $(LIBSOURCES:.cpp=.o)

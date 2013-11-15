@@ -9,6 +9,7 @@
 #include "arraywalk.hpp"
 #include "prettyprint.hpp"
 #include "rdtsc.h"
+#include "timings.hpp"
 #include "util.hpp"
 
 using namespace std;
@@ -38,18 +39,12 @@ namespace arraywalk {
 		"Default-constructed walking array was not initialized.";
 
 	template <typename INDEX_T>
-	ArrayWalk<INDEX_T>::ArrayWalk():
+	ArrayWalk<INDEX_T>::ArrayWalk(const Config & _config):
+		config(_config),
 		length(0),
 		arraymem(NULL),
 		array(NULL)
 	{}
-
-	template <typename INDEX_T>
-	ArrayWalk<INDEX_T>::ArrayWalk(size_t size, size_t align, pattern ptrn):
-		ArrayWalk()
-	{
-		init(size, align, ptrn);
-	}
 
 	template <typename INDEX_T>
 	ArrayWalk<INDEX_T>::~ArrayWalk()
@@ -58,42 +53,52 @@ namespace arraywalk {
 	}
 
 	template <typename INDEX_T>
-	void ArrayWalk<INDEX_T>::init(size_t size, size_t align, pattern ptrn)
+	void ArrayWalk<INDEX_T>::run(timing_cb tcb)
 	{
-		length = size / sizeof(INDEX_T);
+		for (size_t size = config.size_min;
+				size <= config.size_max;
+				size = size * config.size_mul + config.size_inc)
+		{
+			length = size / sizeof(INDEX_T);
 
-		// numeric_limits might not be specialized for non-standard types
-		// (e.g. __int128 with icc)
-		INDEX_T rep_length = static_cast<INDEX_T>(length);
-		if (rep_length != length)
-			throw length_error(NOT_INDEXABLE);
+			// numeric_limits might not be specialized for non-standard types
+			// (e.g. __int128 with icc)
+			INDEX_T rep_length = static_cast<INDEX_T>(length);
+			if (rep_length != length)
+				throw length_error(NOT_INDEXABLE);
 
-		if (length < 4)
-			throw length_error(NEED_FOUR_ELEMENTS);
+			if (length < 4)
+				throw length_error(NEED_FOUR_ELEMENTS);
 
-		if (!util::isPowerOfTwo<size_t>(align))
-			throw domain_error(NOT_POW2_ALIGN);
+			if (!util::isPowerOfTwo<size_t>(config.align))
+				throw domain_error(NOT_POW2_ALIGN);
 
-		// allocate with overhead to cater for later alignment
-		// arraymem must be NULL or previously allocated by this function
-		const size_t overhead = 1 + align / sizeof(INDEX_T);
-		delete[] arraymem;
-		arraymem = new INDEX_T[length + overhead];
-		const intptr_t aligned =
-			(reinterpret_cast<intptr_t>(arraymem) + align) & (~(align - 1));
-		array = reinterpret_cast<INDEX_T *>(aligned);
+			// allocate with overhead to cater for later alignment
+			// arraymem must be NULL or previously allocated by this function
+			const size_t overhead = 1 + config.align / sizeof(INDEX_T);
+			delete[] arraymem;
+			arraymem = new INDEX_T[length + overhead];
+			const uintptr_t aligned =
+				(reinterpret_cast<uintptr_t>(arraymem) + config.align) & (~(config.align - 1));
+			array = reinterpret_cast<INDEX_T *>(aligned);
 
-		switch (ptrn) {
-			case RANDOM: random(); break;
-			case INCREASING: increasing(); break;
-			case DECREASING: decreasing(); break;
+			switch (config.ptrn) {
+				case RANDOM: random(); break;
+				case INCREASING: increasing(); break;
+				case DECREASING: decreasing(); break;
+			}
+
+			uint64_t cycles;
+			uint64_t reads;
+			// loop through data-invariant tests
+			for (unsigned istream = config.istream_min;
+					istream <= config.istream_max;
+					++istream)
+			{
+				timedwalk_loc(istream, config.MiB, cycles, reads);
+				tcb({ cycles, reads, length, istream });
+			}
 		}
-	}
-
-	template <typename INDEX_T>
-	size_t ArrayWalk<INDEX_T>::getLength()
-	{
-		return length;
 	}
 
 	// the random library does not recognise __uint128_t as an integral type: specialize

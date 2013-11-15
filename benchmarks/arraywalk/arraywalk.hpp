@@ -1,37 +1,38 @@
 #pragma once
 
+#include "config.hpp"
+#include "timings.hpp"
+
+#include <cstddef>
 #include <cstdint>
+#include <functional>
 #include <random>
-#include <type_traits>
 
 #define TIMEDWALK_LOC_DEC(NUM) \
 	INDEX_T timedwalk_loc##NUM(uint_fast32_t, uint64_t &, uint64_t &)
 
 namespace arraywalk {
 
-	enum pattern { RANDOM, INCREASING, DECREASING };
+	typedef std::function<void (Timings timings)> timing_cb;
 
 	template <typename INDEX_T>
 		class ArrayWalk {
 			public:
-				ArrayWalk();
-				ArrayWalk(size_t size, size_t align, pattern ptrn);
+				ArrayWalk(const Config & config = Config());
 				~ArrayWalk();
 
-				void init(size_t size, size_t align, pattern ptrn);
-				void reset(enum pattern);
+				void run(timing_cb tcb);
 
-				size_t getLength();
+			private:
+				Config config;
+				size_t length;
+				INDEX_T * arraymem;
+				INDEX_T * array;
 
 				INDEX_T timedwalk_loc(unsigned locs, uint_fast32_t MiB,
 						uint64_t & cycles, uint64_t & reads);
 				INDEX_T timedwalk_vec(uint_fast32_t MiB,
 						uint64_t & cycles, uint64_t & reads);
-
-			private:
-				size_t length;
-				INDEX_T * arraymem;
-				INDEX_T * array;
 
 				void random();
 				void increasing();
