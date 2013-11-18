@@ -1,8 +1,14 @@
 #include "prettyprint.hpp"
 
+#include <iostream>
+
 using namespace std;
 
 namespace prettyprint {
+
+	ostream & operator<<(ostream & out, const Format & f) {
+		return f.format(out);
+	}
 
 	ostream & operator<<(ostream & out, const Bytes & b) {
 		static const struct {

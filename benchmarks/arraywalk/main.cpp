@@ -10,24 +10,19 @@
 
 using namespace std;
 using namespace arraywalk;
-using namespace prettyprint;
-
-static void report(size_t idx_size, Timings & timings) {
-	cout << timings.length << " elements x " << Bytes{idx_size} << " = "
-		<< Bytes{timings.length * idx_size} << " | " << timings.istreams
-		<< " instruction streams" << endl;
-	cout << "cycles: " << timings.cycles << " | ";
-	cout << "reads: " << timings.reads << " (" << Bytes{timings.reads * idx_size} << ")" << endl;
-	cout << "~cycles per read: "
-		<< (double) timings.cycles / (double) timings.reads << endl << endl;
-}
 
 // may throw domain_error when requested alignment is not a power of two
 template <typename INDEX_T>
 static void run_test() {
 	try {
 		auto test = ArrayWalk<INDEX_T>();
-		test.run([] (Timings timings) { report(sizeof(INDEX_T), timings); });
+		test.run([] (Timings && timings) {
+				cout
+				<< "--- CSV ------------------------------------------" << endl
+				<< timings.asCSV() << endl
+				<< "--- HUMAN ----------------------------------------" << endl
+				<< timings.asHuman() << endl;
+				});
 	}
 	catch (const length_error & e) { /* deliberately ignored */ }
 }

@@ -96,7 +96,7 @@ namespace arraywalk {
 					++istream)
 			{
 				timedwalk_loc(istream, config.MiB, cycles, reads);
-				tcb({ cycles, reads, length, istream });
+				tcb(Timings({ cycles, reads, length, sizeof(INDEX_T), istream }));
 			}
 		}
 	}
