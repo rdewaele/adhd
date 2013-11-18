@@ -14,16 +14,14 @@ namespace prettyprint {
 			{ (uint64_t) 1 << 40, "TiB" },
 			{ (uint64_t) 1 << 30, "GiB" },
 			{ (uint64_t) 1 << 20, "MiB" },
-			{ (uint64_t) 1 << 10, "KiB" },
-			{ (uint64_t) 0, "B" },
+			{ (uint64_t) 1 << 10, "KiB" }
 		};
 		for (auto & row : table)
 			if (b.bytes >= row.bound)
 				return out << (double) b.bytes / (double) row.bound
 					<< " " << row.suffix;
 
-		// unreachable - suppress "control reaches end of non-void function"
-		return out;
+		return out << b.bytes << " B";
 	}
 
 }
