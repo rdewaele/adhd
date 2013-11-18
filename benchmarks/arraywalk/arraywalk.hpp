@@ -13,7 +13,7 @@
 
 namespace arraywalk {
 
-	typedef std::function<void (Timings timings)> timing_cb;
+	typedef std::function<void (Timings && timings)> timing_cb;
 
 	template <typename INDEX_T>
 		class ArrayWalk {
