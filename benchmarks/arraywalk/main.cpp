@@ -16,7 +16,7 @@ template <typename INDEX_T>
 static void run_test() {
 	try {
 		auto test = ArrayWalk<INDEX_T>();
-		test.run([] (Timings && timings) {
+		test.run([] (const Timings & timings) {
 				cout
 				<< "--- CSV ------------------------------------------" << endl
 				<< timings.asCSV() << endl
