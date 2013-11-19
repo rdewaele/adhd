@@ -61,9 +61,24 @@ namespace arraywalk {
 		{
 			length = size / sizeof(INDEX_T);
 
+			/* icpc warns about implicit conversion, which is rather odd when doing
+			 * an explicit conversion. Furthermore, using a function- or c-style cast
+			 * also suppresses the warning, but these should resolve to one of the
+			 * xxx_cast<>() forms in C++11 according to the standard, and in this
+			 * specific case be equivalent to the static_cast written below. Lastly,
+			 * clang nor gcc produce a warning. Last checked with:
+			 * icpc (ICC) 14.0.1 20131008, clang version 3.3 (tags/RELEASE_33/final)
+			 * and g++ (GCC) 4.8.2 */
+#ifdef __INTEL_COMPILER
+#pragma warning(push)
+#pragma warning(disable:1682)
+#endif
 			// numeric_limits might not be specialized for non-standard types
 			// (e.g. __int128 with icc)
 			INDEX_T rep_length = static_cast<INDEX_T>(length);
+#ifdef __INTEL_COMPILER
+#pragma warning(pop)
+#endif
 			if (rep_length != length)
 				throw length_error(NOT_INDEXABLE);
 
@@ -114,7 +129,16 @@ namespace arraywalk {
 	template <typename INDEX_T>
 	INDEX_T ArrayWalk<INDEX_T>::randomIndex(INDEX_T minimum)
 	{
-		uniform_int_distribution<INDEX_T> dis(minimum, static_cast<INDEX_T>(length - 1));
+		/* see disable:1682 above */
+#ifdef __INTEL_COMPILER
+#pragma warning(push)
+#pragma warning(disable:1682)
+#endif
+		const INDEX_T maximum = static_cast<INDEX_T>(length - 1);
+#ifdef __INTEL_COMPILER
+#pragma warning(pop)
+#endif
+		uniform_int_distribution<INDEX_T> dis(minimum, maximum);
 		return dis(rng);
 	}
 
@@ -153,7 +177,16 @@ namespace arraywalk {
 	template <typename INDEX_T>
 	void ArrayWalk<INDEX_T>::decreasing()
 	{
-		array[0] = static_cast<INDEX_T>(length - 1);
+		/* see disable:1682 above */
+#ifdef __INTEL_COMPILER
+#pragma warning(push)
+#pragma warning(disable:1682)
+#endif
+		const INDEX_T maximum = static_cast<INDEX_T>(length - 1);
+#ifdef __INTEL_COMPILER
+#pragma warning(pop)
+#endif
+		array[0] = maximum;
 		for (INDEX_T idx = 1; idx < length; ++idx)
 			array[idx] = static_cast<INDEX_T>(idx - 1);
 	}

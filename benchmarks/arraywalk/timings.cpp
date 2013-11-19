@@ -6,6 +6,16 @@
 using namespace prettyprint;
 using namespace std;
 
+/* icpc warns that 'args' in sequence is unreferenced, which is untrue
+ * we assume the compiler gets confused by the variadic templates
+ * furthermore, we cannot enable the warning again for this file because icpc
+ * warns when expanding the template, which apparently happens after reading
+ * this complete source
+ * (last checked with icpc (ICC) 14.0.1 20131008) */
+#ifdef __INTEL_COMPILER
+#pragma warning(disable:869)
+#endif
+
 namespace arraywalk {
 
 	Timings::Timings(const TimingData & _td):
