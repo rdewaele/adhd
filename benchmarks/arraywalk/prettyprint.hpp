@@ -50,9 +50,17 @@ namespace prettyprint {
 			virtual std::ostream & formatHuman(std::ostream & out) const = 0;
 	};
 
-	struct Bytes {
-		uint64_t bytes;
+	class Bytes: public Format {
+		public:
+			Bytes(uint64_t bytes);
+
+			virtual std::ostream & format(std::ostream & out) const {
+				return formatBytes(out);
+			}
+
+		private:
+			uint64_t bytes;
+			virtual std::ostream & formatBytes(std::ostream & out) const;
 	};
-	std::ostream & operator<<(std::ostream & out, const Bytes & b);
 
 }

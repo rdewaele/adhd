@@ -6,11 +6,24 @@ using namespace std;
 
 namespace prettyprint {
 
+	//
+	// class Format
+	//
+
 	ostream & operator<<(ostream & out, const Format & f) {
 		return f.format(out);
 	}
 
-	ostream & operator<<(ostream & out, const Bytes & b) {
+
+	//
+	// class Bytes
+	//
+
+	Bytes::Bytes(uint64_t _bytes):
+		bytes(_bytes)
+	{}
+
+	ostream & Bytes::formatBytes(ostream & out) const {
 		static const struct {
 			uint64_t bound;
 			string suffix;
@@ -23,11 +36,11 @@ namespace prettyprint {
 			{ (uint64_t) 1 << 10, "KiB" }
 		};
 		for (auto & row : table)
-			if (b.bytes >= row.bound)
-				return out << (double) b.bytes / (double) row.bound
+			if (bytes >= row.bound)
+				return out << (double) bytes / (double) row.bound
 					<< " " << row.suffix;
 
-		return out << b.bytes << " B";
+		return out << bytes << " B";
 	}
 
 }
