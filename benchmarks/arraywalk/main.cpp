@@ -24,7 +24,7 @@ static void run_test() {
 				<< timings.asHuman() << endl;
 				});
 	}
-	catch (const length_error & e) { /* deliberately ignored */ }
+	catch (const length_error &) { /* deliberately ignored */ }
 }
 
 int main() {
