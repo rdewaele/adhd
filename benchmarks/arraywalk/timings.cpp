@@ -32,11 +32,11 @@ namespace arraywalk {
 	}
 
 	ostream & Timings::formatHuman(ostream & out) const {
-		out << td.length << " elements x " << Bytes{td.idx_size} << " = "
-			<< Bytes{td.length * td.idx_size} << " | " << td.istreams
+		out << td.length << " elements x " << Bytes(td.idx_size) << " = "
+			<< Bytes(td.length * td.idx_size) << " | " << td.istreams
 			<< " instruction streams" << endl;
 		out << "cycles: " << td.cycles << " | ";
-		out << "reads: " << td.reads << " (" << Bytes{td.reads * td.idx_size} << ")" << endl;
+		out << "reads: " << td.reads << " (" << Bytes(td.reads * td.idx_size) << ")" << endl;
 		out << "~cycles per read: "
 			<< (double) td.cycles / (double) td.reads << endl;
 		return out;
