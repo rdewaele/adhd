@@ -7,13 +7,12 @@
 #include <type_traits>
 
 #include "arraywalk.hpp"
-#include "prettyprint.hpp"
-#include "rdtsc.h"
+#include "../benchmark.hpp"
+#include "../rdtsc.h"
 #include "timings.hpp"
 #include "util.hpp"
 
 using namespace std;
-using namespace prettyprint;
 
 namespace arraywalk {
 	// The tested range of memory addresses will be smaller than
@@ -38,6 +37,11 @@ namespace arraywalk {
 	static const char NOT_INITIALIZED[] =
 		"Default-constructed walking array was not initialized.";
 
+	adhd::Benchmark * ArrayWalkFactory::makeBenchmark(const adhd::Config & cfg) {
+		// TODO: use actual config passed here, instead of using default config
+		return new ArrayWalk<uint64_t>(Config());
+	}
+
 	template <typename INDEX_T>
 	ArrayWalk<INDEX_T>::ArrayWalk(const Config & _config):
 		config(_config),
@@ -53,7 +57,7 @@ namespace arraywalk {
 	}
 
 	template <typename INDEX_T>
-	void ArrayWalk<INDEX_T>::run(timing_cb tcb)
+	void ArrayWalk<INDEX_T>::run(adhd::timing_cb tcb)
 	{
 		for (size_t size = config.size_min;
 				size <= config.size_max;
@@ -218,9 +222,9 @@ namespace arraywalk {
 #include "arraywalk_loc.ii"
 #include "arraywalk_vec.ii"
 
-	template class ArrayWalk<uint8_t>;
-	template class ArrayWalk<uint16_t>;
-	template class ArrayWalk<uint32_t>;
+	//template class ArrayWalk<uint8_t>;
+	//template class ArrayWalk<uint16_t>;
+	//template class ArrayWalk<uint32_t>;
 	template class ArrayWalk<uint64_t>;
-	template class ArrayWalk<__uint128_t>;
+	//template class ArrayWalk<__uint128_t>;
 }

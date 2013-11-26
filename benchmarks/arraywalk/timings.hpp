@@ -1,6 +1,6 @@
 #pragma once
 
-#include "prettyprint.hpp"
+#include "../benchmark.hpp"
 
 #include <cstddef>
 #include <cstdint>
@@ -17,12 +17,12 @@ namespace arraywalk {
 	};
 	static_assert(std::is_pod<TimingData>::value, "struct TimingData must be a POD");
 
-	class Timings: public prettyprint::CSV, public prettyprint::Human {
+	class Timings: public adhd::Timings {
 		public:
 			Timings(const TimingData & td);
-			virtual std::ostream & formatHeader(std::ostream & out) const;
-			virtual std::ostream & formatCSV(std::ostream & out) const;
-			virtual std::ostream & formatHuman(std::ostream & out) const;
+			virtual std::ostream & formatHeader(std::ostream & out) const override;
+			virtual std::ostream & formatCSV(std::ostream & out) const override;
+			virtual std::ostream & formatHuman(std::ostream & out) const override;
 
 		private:
 			TimingData td;

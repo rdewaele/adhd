@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../benchmark.hpp"
 #include "config.hpp"
 #include "timings.hpp"
 
@@ -13,15 +14,18 @@
 
 namespace arraywalk {
 
-	typedef std::function<void (const Timings & timings)> timing_cb;
+	class ArrayWalkFactory: public adhd::BenchmarkFactory {
+		public:
+			virtual adhd::Benchmark * makeBenchmark(const adhd::Config & cfg) override;
+	};
 
 	template <typename INDEX_T>
-		class ArrayWalk {
+		class ArrayWalk: public adhd::Benchmark {
 			public:
-				ArrayWalk(const Config & config = Config());
+				ArrayWalk(const Config & cfg = Config());
 				~ArrayWalk();
 
-				void run(timing_cb tcb);
+				virtual void run(adhd::timing_cb tcb) override;
 
 			private:
 				Config config;

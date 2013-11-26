@@ -1,5 +1,6 @@
-#include "prettyprint.hpp"
 #include "timings.hpp"
+
+#include "../prettyprint.hpp"
 
 #include <iostream>
 

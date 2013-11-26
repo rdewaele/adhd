@@ -1,5 +1,7 @@
 #pragma once
 
+#include "../benchmark.hpp"
+
 // TODO libconfig as backend
 
 #include <cstddef>
@@ -25,7 +27,7 @@ namespace arraywalk {
 		static constexpr uint_fast32_t MiB = 1 << 8;
 	}
 
-	struct Config/*: public libconfig::Config */ {
+	struct Config: public adhd::Config/*: public libconfig::Config */ {
 		Config(
 				size_t _size_min      = defaults::size_min,
 				size_t _size_max      = defaults::size_max,
