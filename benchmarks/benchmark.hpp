@@ -23,7 +23,7 @@ namespace adhd {
 	class Benchmark {
 		public:
 			virtual void run(timing_cb tcb) = 0;
-			virtual ~Benchmark() = default;
+			virtual ~Benchmark() {};
 	};
 
 	class Config {
