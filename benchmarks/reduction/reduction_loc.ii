@@ -1,0 +1,142 @@
+#define DEF1(A,O) INDEX_T acc0 = 0; INDEX_T * const arr0 = A + (O * 0);
+#define DEF2(A,O) DEF1(A,O); INDEX_T acc1 = 0; INDEX_T * const arr1 = A + (O * 1);
+#define DEF3(A,O) DEF2(A,O); INDEX_T acc2 = 0; INDEX_T * const arr2 = A + (O * 2);
+#define DEF4(A,O) DEF3(A,O); INDEX_T acc3 = 0; INDEX_T * const arr3 = A + (O * 3);
+#define DEF5(A,O) DEF4(A,O); INDEX_T acc4 = 0; INDEX_T * const arr4 = A + (O * 4);
+#define DEF6(A,O) DEF5(A,O); INDEX_T acc5 = 0; INDEX_T * const arr5 = A + (O * 5);
+#define DEF7(A,O) DEF6(A,O); INDEX_T acc6 = 0; INDEX_T * const arr6 = A + (O * 6);
+#define DEF8(A,O) DEF7(A,O); INDEX_T acc7 = 0; INDEX_T * const arr7 = A + (O * 7);
+#define DEF9(A,O) DEF8(A,O); INDEX_T acc8 = 0; INDEX_T * const arr8 = A + (O * 8);
+#define DEF10(A,O) DEF9(A,O); INDEX_T acc9 = 0; INDEX_T * const arr9 = A + (O * 9);
+#define DEF11(A,O) DEF10(A,O); INDEX_T acc10 = 0; INDEX_T * const arr10 = A + (O * 10);
+#define DEF12(A,O) DEF11(A,O); INDEX_T acc11 = 0; INDEX_T * const arr11 = A + (O * 11);
+#define DEF13(A,O) DEF12(A,O); INDEX_T acc12 = 0; INDEX_T * const arr12 = A + (O * 12);
+#define DEF14(A,O) DEF13(A,O); INDEX_T acc13 = 0; INDEX_T * const arr13 = A + (O * 13);
+#define DEF15(A,O) DEF14(A,O); INDEX_T acc14 = 0; INDEX_T * const arr14 = A + (O * 14);
+#define DEF16(A,O) DEF15(A,O); INDEX_T acc15 = 0; INDEX_T * const arr15 = A + (O * 15);
+#define DEF17(A,O) DEF16(A,O); INDEX_T acc16 = 0; INDEX_T * const arr16 = A + (O * 16);
+#define DEF18(A,O) DEF17(A,O); INDEX_T acc17 = 0; INDEX_T * const arr17 = A + (O * 17);
+#define DEF19(A,O) DEF18(A,O); INDEX_T acc18 = 0; INDEX_T * const arr18 = A + (O * 18);
+#define DEF20(A,O) DEF19(A,O); INDEX_T acc19 = 0; INDEX_T * const arr19 = A + (O * 19);
+
+#define ACC1(I) acc0 += arr0[I]
+#define ACC2(I) ACC1(I); acc1 += arr1[I]
+#define ACC3(I) ACC2(I); acc2 += arr2[I]
+#define ACC4(I) ACC3(I); acc3 += arr3[I]
+#define ACC5(I) ACC4(I); acc4 += arr4[I]
+#define ACC6(I) ACC5(I); acc5 += arr5[I]
+#define ACC7(I) ACC6(I); acc6 += arr6[I]
+#define ACC8(I) ACC7(I); acc7 += arr7[I]
+#define ACC9(I) ACC8(I); acc8 += arr8[I]
+#define ACC10(I) ACC9(I); acc9 += arr9[I]
+#define ACC11(I) ACC10(I); acc10 += arr10[I]
+#define ACC12(I) ACC11(I); acc11 += arr11[I]
+#define ACC13(I) ACC12(I); acc12 += arr12[I]
+#define ACC14(I) ACC13(I); acc13 += arr13[I]
+#define ACC15(I) ACC14(I); acc14 += arr14[I]
+#define ACC16(I) ACC15(I); acc15 += arr15[I]
+#define ACC17(I) ACC16(I); acc16 += arr16[I]
+#define ACC18(I) ACC17(I); acc17 += arr17[I]
+#define ACC19(I) ACC18(I); acc18 += arr18[I]
+#define ACC20(I) ACC19(I); acc19 += arr19[I]
+
+#define SUM1(T) acc0
+#define SUM2(T) static_cast<T>(SUM1(T) + acc1)
+#define SUM3(T) static_cast<T>(SUM2(T) + acc2)
+#define SUM4(T) static_cast<T>(SUM3(T) + acc3)
+#define SUM5(T) static_cast<T>(SUM4(T) + acc4)
+#define SUM6(T) static_cast<T>(SUM5(T) + acc5)
+#define SUM7(T) static_cast<T>(SUM6(T) + acc6)
+#define SUM8(T) static_cast<T>(SUM7(T) + acc7)
+#define SUM9(T) static_cast<T>(SUM8(T) + acc8)
+#define SUM10(T) static_cast<T>(SUM9(T) + acc9)
+#define SUM11(T) static_cast<T>(SUM10(T) + acc10)
+#define SUM12(T) static_cast<T>(SUM11(T) + acc11)
+#define SUM13(T) static_cast<T>(SUM12(T) + acc12)
+#define SUM14(T) static_cast<T>(SUM13(T) + acc13)
+#define SUM15(T) static_cast<T>(SUM14(T) + acc14)
+#define SUM16(T) static_cast<T>(SUM15(T) + acc15)
+#define SUM17(T) static_cast<T>(SUM16(T) + acc16)
+#define SUM18(T) static_cast<T>(SUM17(T) + acc17)
+#define SUM19(T) static_cast<T>(SUM18(T) + acc18)
+#define SUM20(T) static_cast<T>(SUM19(T) + acc19)
+
+#define TIMEDREDUCE_LOC(NUM) template <typename INDEX_T> \
+	INDEX_T Reduction<INDEX_T>::timedreduce_loc##NUM(uint_fast32_t MiB, \
+	                                                 uint64_t & cycles, \
+	                                                 uint64_t & reads) \
+	{ \
+		if (NULL == array) \
+			throw length_error(NOT_INITIALIZED); \
+		\
+		uint64_t cStart, cEnd; \
+		constexpr unsigned long mb_reads = (1 << 20) / sizeof(INDEX_T); \
+		const unsigned long array_reads = mb_reads / length; \
+		DEF##NUM(array, length / NUM); \
+		/* reads = MiB * mb_reads; */ \
+		cStart = rdtsc(); \
+		for (uint_fast32_t step = 0; step < MiB; ++step) \
+			for (unsigned long ar = 0; ar < array_reads; ++ar) \
+				for (unsigned long i = 0; i < length / NUM; ++i) { \
+					ACC##NUM(i); \
+				} \
+		cEnd = rdtsc(); \
+		cycles = cEnd - cStart; \
+		reads = SUM##NUM(INDEX_T); \
+		return reads; \
+	}
+
+TIMEDREDUCE_LOC(1)
+TIMEDREDUCE_LOC(2)
+TIMEDREDUCE_LOC(3)
+TIMEDREDUCE_LOC(4)
+TIMEDREDUCE_LOC(5)
+TIMEDREDUCE_LOC(6)
+TIMEDREDUCE_LOC(7)
+TIMEDREDUCE_LOC(8)
+TIMEDREDUCE_LOC(9)
+TIMEDREDUCE_LOC(10)
+TIMEDREDUCE_LOC(11)
+TIMEDREDUCE_LOC(12)
+TIMEDREDUCE_LOC(13)
+TIMEDREDUCE_LOC(14)
+TIMEDREDUCE_LOC(15)
+TIMEDREDUCE_LOC(16)
+TIMEDREDUCE_LOC(17)
+TIMEDREDUCE_LOC(18)
+TIMEDREDUCE_LOC(19)
+TIMEDREDUCE_LOC(20)
+
+template <typename INDEX_T>
+INDEX_T Reduction<INDEX_T>::timedreduce_loc(unsigned locs,
+	                                          uint_fast32_t MiB,
+	                                          uint64_t & cycles,
+	                                          uint64_t & reads)
+{
+#define TIMEDREDUCE_LOC_CASE(NUM) \
+	case NUM: return timedreduce_loc##NUM(MiB, cycles, reads)
+	switch (locs) {
+		TIMEDREDUCE_LOC_CASE(1);
+		TIMEDREDUCE_LOC_CASE(2);
+		TIMEDREDUCE_LOC_CASE(3);
+		TIMEDREDUCE_LOC_CASE(4);
+		TIMEDREDUCE_LOC_CASE(5);
+		TIMEDREDUCE_LOC_CASE(6);
+		TIMEDREDUCE_LOC_CASE(7);
+		TIMEDREDUCE_LOC_CASE(8);
+		TIMEDREDUCE_LOC_CASE(9);
+		TIMEDREDUCE_LOC_CASE(10);
+		TIMEDREDUCE_LOC_CASE(11);
+		TIMEDREDUCE_LOC_CASE(12);
+		TIMEDREDUCE_LOC_CASE(13);
+		TIMEDREDUCE_LOC_CASE(14);
+		TIMEDREDUCE_LOC_CASE(15);
+		TIMEDREDUCE_LOC_CASE(16);
+		TIMEDREDUCE_LOC_CASE(17);
+		TIMEDREDUCE_LOC_CASE(18);
+		TIMEDREDUCE_LOC_CASE(19);
+		TIMEDREDUCE_LOC_CASE(20);
+		default:
+		return 0; //TODO error handling
+	}
+}

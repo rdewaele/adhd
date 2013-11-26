@@ -1,0 +1,30 @@
+template <typename INDEX_T>
+INDEX_T Reduction<INDEX_T>::timedreduce_vec(uint_fast32_t MiB,
+		uint64_t & cycles, uint64_t & reads)
+{
+	if (NULL == array)
+		throw length_error(NOT_INITIALIZED);
+
+	uint64_t cStart, cEnd;
+	constexpr unsigned long mb_reads = (1 << 20) / sizeof(INDEX_T);
+	constexpr unsigned indep = 15;
+	INDEX_T * const idxs = new INDEX_T[indep];
+	for (INDEX_T idx = 0; idx < indep; ++idx)
+		idxs[idx] = 0;
+
+	reads = MiB * indep * mb_reads;
+
+	cStart = rdtsc();
+	for (uint_fast32_t step = 0; step < MiB; ++step)
+		for (unsigned long i = 0; i < mb_reads; ++i)
+			for (INDEX_T idx = 0; idx < indep; ++idx)
+				idxs[idx] = array[idxs[idx]];
+	cEnd = rdtsc();
+
+	cycles = cEnd - cStart;
+	INDEX_T sum = 0;
+	for (unsigned i = 0; i < indep; ++i)
+		sum = static_cast<INDEX_T>(sum + idxs[i]);
+	delete idxs;
+	return sum;
+}
