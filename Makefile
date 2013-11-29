@@ -27,10 +27,10 @@ LDFLAGS += -lm -lrt \
 					 $(shell pkg-config --libs $(PKGCONFIG_LIBS))
 
 SOURCES = main.cpp logging.cpp options.cpp parallel.cpp \
-					benchmarks/util.cpp \
-					benchmarks/arraywalk.cpp \
-					benchmarks/flops.cpp \
-					benchmarks/streaming.cpp
+					benchmarks/deprecated/util.cpp \
+					benchmarks/deprecated/arraywalk.cpp \
+					benchmarks/deprecated/flops.cpp \
+					benchmarks/deprecated/streaming.cpp
 VALGRIND_CONF = vgconfig.cppfg
 OBJECTS = $(SOURCES:.cpp=.o)
 
