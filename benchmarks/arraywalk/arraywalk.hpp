@@ -16,7 +16,7 @@ namespace arraywalk {
 
 	class ArrayWalkFactory: public adhd::BenchmarkFactory {
 		public:
-			virtual adhd::Benchmark * makeBenchmark(const adhd::Config & cfg) override;
+			virtual adhd::Benchmark * makeBenchmark(const adhd::Config & cfg) const override;
 	};
 
 	template <typename INDEX_T>

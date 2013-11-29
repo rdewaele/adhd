@@ -37,7 +37,7 @@ namespace arraywalk {
 	static const char NOT_INITIALIZED[] =
 		"Default-constructed walking array was not initialized.";
 
-	adhd::Benchmark * ArrayWalkFactory::makeBenchmark(const adhd::Config & cfg) {
+	adhd::Benchmark * ArrayWalkFactory::makeBenchmark(const adhd::Config & cfg) const {
 		// TODO: use actual config passed here, instead of using default config
 		return new ArrayWalk<uint64_t>(Config());
 	}

@@ -16,7 +16,7 @@ namespace adhd {
 
 	class BenchmarkFactory {
 		public:
-			virtual Benchmark * makeBenchmark(const Config & cfg) = 0;
+			virtual Benchmark * makeBenchmark(const Config & cfg) const = 0;
 			virtual ~BenchmarkFactory() = default;
 	};
 

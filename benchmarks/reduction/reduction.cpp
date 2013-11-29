@@ -37,7 +37,7 @@ namespace reduction {
 	static const char NOT_INITIALIZED[] =
 		"Default-constructed walking array was not initialized.";
 
-	adhd::Benchmark * ReductionFactory::makeBenchmark(const adhd::Config & cfg) {
+	adhd::Benchmark * ReductionFactory::makeBenchmark(const adhd::Config & cfg) const {
 		// TODO: use actual config passed here, instead of using default config
 		return new Reduction<uint64_t>(Config());
 	}
