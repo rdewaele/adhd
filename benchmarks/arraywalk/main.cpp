@@ -61,6 +61,7 @@ int main(int argc, char * argv[]) {
 	}
 
 	for (unsigned trial = 1; trial <= trials; ++trial) {
+		cout << ">>> Trial " << trial << " >>>" << endl;
 		//run_test<uint8_t>(logfile, trial);
 		//run_test<uint16_t>(logfile, trial);
 		//run_test<uint32_t>(logfile, trial);
