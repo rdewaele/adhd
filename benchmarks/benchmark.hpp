@@ -26,6 +26,23 @@ namespace adhd {
 			virtual ~Benchmark() {};
 	};
 
+	class SimpleBenchmark: public Benchmark {
+		public:
+			virtual void run(timing_cb tcb) final override;
+			virtual void runBare(timing_cb tcb) = 0;
+			virtual ~SimpleBenchmark() {};
+	};
+
+	class ThreadedBenchmark: public Benchmark {
+		public:
+			virtual void run(timing_cb tcb) final override;
+			virtual void runBare(timing_cb tcb) = 0;
+			virtual ~ThreadedBenchmark() {};
+		private:
+			unsigned minThreads;
+			unsigned maxThreads;
+	};
+
 	class Config {
 		template <typename T>
 		T get(std::string & s);

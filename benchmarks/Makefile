@@ -4,7 +4,7 @@ LIBRARY = libbenchmark.a
 #all: $(PROGRAM)
 all: $(LIBRARY)
 
-LIBSOURCES = prettyprint.cpp
+LIBSOURCES = benchmark.cpp prettyprint.cpp
 #SOURCES = main.cpp
 
 LIBOBJECTS = $(LIBSOURCES:.cpp=.o)

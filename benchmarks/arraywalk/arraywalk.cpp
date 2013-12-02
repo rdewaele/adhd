@@ -57,7 +57,7 @@ namespace arraywalk {
 	}
 
 	template <typename INDEX_T>
-	void ArrayWalk<INDEX_T>::run(adhd::timing_cb tcb)
+	void ArrayWalk<INDEX_T>::runBare(adhd::timing_cb tcb)
 	{
 		for (size_t size = config.size_min;
 				size <= config.size_max;
