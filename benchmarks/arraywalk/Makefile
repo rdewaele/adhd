@@ -23,8 +23,6 @@ endif
 ifeq ($(CXX),icpc)
 	CXXFLAGS += -xHost
 endif
-CFLAGS := -std=c99 -W -Wall -Wextra -pedantic $(CFLAGS) \
-	-O3
 
 CXXFLAGS := -std=c++11 -W -Wall -Wextra -pedantic \
 	$(EXTRA_WARNINGS) \
