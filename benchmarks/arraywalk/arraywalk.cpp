@@ -43,8 +43,8 @@ namespace arraywalk {
 	}
 
 	template <typename INDEX_T>
-	ArrayWalk<INDEX_T>::ArrayWalk(const Config & _config):
-		config(_config),
+	ArrayWalk<INDEX_T>::ArrayWalk(const Config & cfg):
+		config(cfg),
 		length(0),
 		arraymem(NULL),
 		array(NULL)

@@ -1,14 +1,13 @@
 LIBRARY = libbenchmark.a
-#PROGRAM = arraywalk
+PROGRAM = benchmark
 
-#all: $(PROGRAM)
-all: $(LIBRARY)
+all: $(PROGRAM)
 
 LIBSOURCES = benchmark.cpp prettyprint.cpp
-#SOURCES = main.cpp
+SOURCES = main.cpp
 
 LIBOBJECTS = $(LIBSOURCES:.cpp=.o)
-#OBJECTS = $(SOURCES:.cpp=.o)
+OBJECTS = $(SOURCES:.cpp=.o)
 
 MAKEDEP = .make.dep
 # One could play with compiler optimizations to see whether those have any
@@ -33,16 +32,16 @@ CXXFLAGS := -std=c++11 -W -Wall -Wextra -pedantic \
 	-g -O3
 #	-DNDEBUG
 
-LDLIBS += -larraywalk -lm -lrt -lstdc++
+LDLIBS += -lbenchmark -lm -lrt -lstdc++
 LDFLAGS += -L.
 
-#test: $(PROGRAM)
-#	./$<
+test: $(PROGRAM)
+	./$<
 
-#run: test
+run: test
 
-#$(PROGRAM): $(LIBRARY) $(OBJECTS)
-#	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OBJECTS) $(LDLIBS) -o $@
+$(PROGRAM): $(LIBRARY) $(OBJECTS)
+	$(CXX) $(CXXFLAGS) $(LDFLAGS) $(OBJECTS) $(LDLIBS) -o $@
 
 $(LIBRARY): $(LIBOBJECTS)
 	$(AR) $(ARFLAGS) $@ $^
@@ -57,8 +56,8 @@ clean:
 analyze:
 	clang $(CXXFLAGS) --analyze $(SOURCES) $(LIBSOURCES)
 
-#valgrind: $(PROGRAM)
-#	valgrind -v --leak-check=full --show-reachable=yes ./$<
+valgrind: $(PROGRAM)
+	valgrind -v --leak-check=full --show-reachable=yes ./$<
 
 $(MAKEDEP): $(SOURCES) $(LIBSOURCES)
 	$(CXX) $(CXXFLAGS) -MM $^ > $@

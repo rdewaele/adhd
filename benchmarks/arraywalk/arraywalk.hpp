@@ -20,7 +20,7 @@ namespace arraywalk {
 	};
 
 	template <typename INDEX_T>
-		class ArrayWalk: public adhd::ThreadedBenchmark {
+		class ArrayWalk: public adhd::SimpleBenchmark {
 			public:
 				ArrayWalk(const Config & cfg = Config());
 				~ArrayWalk();
