@@ -1,33 +1,55 @@
 #include "benchmark.hpp"
 
+#include "rdtsc.h"
+
 #include <iostream>
 
 using namespace std;
 using namespace adhd;
 
 class PhonyTimings: public Timings {
-	virtual Timings * clone() const override {
-		auto temp = new PhonyTimings();
-		return temp;
-	}
+	public:
+		PhonyTimings():
+			start(0),
+			stop(0)
+	{}
 
-	virtual ostream & formatHeader(ostream & out) const override {
-		return out << "PhonyHeader" << endl;
-	}
+		PhonyTimings(long long unsigned _start, long long unsigned _stop):
+			start(_start),
+			stop(_stop)
+	{}
 
-	virtual ostream & formatCSV(ostream & out) const override {
-		return out << "PhonyField" << endl;
-	}
+		virtual Timings * clone() const override {
+			auto temp = new PhonyTimings();
+			return temp;
+		}
 
-	virtual ostream & formatHuman(ostream & out) const override {
-		return out << "PhonyHuman" << endl;
-	}
+		virtual ostream & formatHeader(ostream & out) const override {
+			return out << "PhonyHeader" << endl;
+		}
+
+		virtual ostream & formatCSV(ostream & out) const override {
+			return out << "PhonyField" << endl;
+		}
+
+		virtual ostream & formatHuman(ostream & out) const override {
+			return out
+				<< "start:        " << start << endl
+				<< "stop:         " << stop << endl
+				<< "stop - start: " << stop - start << endl;
+		}
+
+	private:
+		long long unsigned start;
+		long long unsigned stop;
 };
 
 class TestSimple: public SimpleBenchmark {
 	virtual void runBare(timing_cb tcb) override {
+		long long unsigned start = rdtsc();
 		cout << "I am Simple!" << endl;
-		tcb(PhonyTimings());
+		long long unsigned stop = rdtsc();
+		tcb(PhonyTimings(start, stop));
 	}
 };
 
@@ -46,8 +68,12 @@ class TestThreaded: public ThreadedBenchmark {
 		}
 
 		virtual void runBare(unsigned threadNum) override {
+			long long unsigned start = rdtsc();
 			cout << "I am Threaded!" << endl;
-			reportTimings(threadNum, PhonyTimings());
+			long long unsigned stop = rdtsc();
+			auto temp = PhonyTimings(start, stop);
+			cout << temp.asHuman();
+			reportTimings(threadNum, temp);
 		}
 };
 
