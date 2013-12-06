@@ -1,7 +1,10 @@
 #pragma once
 
+#define SPIN_LOCK
+
 #include "prettyprint.hpp"
 
+#include <atomic>
 #include <functional>
 #include <iostream>
 #include <string>
@@ -85,6 +88,10 @@ namespace adhd {
 			const unsigned maxThreads;
 			const pthread_t self;
 			pthread_t * allThreads;
+#if FLAG_LOCK
+			std::atomic_flag spin_go;
+#elif BOOL_LOCK
+#endif
 	};
 
 	class Config {

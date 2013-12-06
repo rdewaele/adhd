@@ -88,8 +88,9 @@ int main() {
 		simple.run(phonyCallback);
 	}
 	{
-		auto threaded = TestThreaded();
-		threaded.run(phonyCallback);
+		auto * threaded = new TestThreaded();
+		threaded->run(phonyCallback);
+		delete threaded;
 	}
 	return 0;
 }

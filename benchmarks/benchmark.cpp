@@ -4,6 +4,10 @@
 #include <pthread.h>
 #include <stdexcept>
 #include <system_error>
+#if FLAG_LOCK
+#include <unistd.h>
+#elif BOOL_LOCK
+#endif
 
 using namespace std;
 
@@ -53,6 +57,10 @@ namespace adhd {
 		maxThreads(4),
 		self(pthread_self()),
 		allThreads(new pthread_t[maxThreads])
+#if FLAG_LOCK
+		,spin_go(ATOMIC_FLAG_INIT)
+#elif BOOL_LOCK
+#endif
 	{
 		const auto min = minThreads;
 		const auto max = maxThreads;
@@ -105,9 +113,14 @@ namespace adhd {
 
 	void * ThreadedBenchmark::runThread(unsigned threadNum) {
 		/*- barrier --------------------------------------------------------------*/
-		const int isSerial = context->init();
-		if (isSerial == PTHREAD_BARRIER_SERIAL_THREAD)
+		const int isSerial_init = context->init();
+		if (isSerial_init == PTHREAD_BARRIER_SERIAL_THREAD) {
+#if FLAG_LOCK
+			spin_go.test_and_set();
+#elif BOOL_LOCK
+#endif
 			setup(context->getNumThreads());
+		}
 
 		/*- barrier --------------------------------------------------------------*/
 		context->ready();
@@ -118,7 +131,18 @@ namespace adhd {
 		// XXX this used to contain timing calls
 
 		/*- barrier --------------------------------------------------------------*/
-		context->go();
+		const int isSerial_go = context->go();
+#if FLAG_LOCK
+		if (isSerial_init == PTHREAD_BARRIER_SERIAL_THREAD) {
+			sleep(1);
+			spin_go.clear();
+		}
+		else {
+			while(spin_go.test_and_set());
+			spin_go.clear();
+		}
+#elif BOOL_LOCK
+#endif
 		runBare(threadNum);
 
 		/*- barrier --------------------------------------------------------------*/
