@@ -78,7 +78,6 @@ namespace adhd {
 	
 		for (unsigned t = 0; t < num; ++t) {
 			bts[t] = BenchmarkThread {t, this};
-			cout << "hallo" << endl;
 			const int rc = pthread_create(allThreads + t, NULL, tmain, bts + t);
 			if (rc)
 				throw system_error(rc, generic_category(), strerror(rc));
