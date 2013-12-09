@@ -4,9 +4,13 @@
 #include <pthread.h>
 #include <stdexcept>
 #include <system_error>
-#if FLAG_LOCK
+
+#if defined FLAG_LOCK
 #include <unistd.h>
-#elif BOOL_LOCK
+#elif defined BOOL_LOCK
+#include <unistd.h>
+#elif defined INT_LOCK
+#include <unistd.h>
 #endif
 
 using namespace std;
@@ -16,12 +20,19 @@ namespace adhd {
 	static const char keyMinThreads[] = "minThreads";
 	static const char keyMaxThreads[] = "maxThreads";
 
+	/*
+	 * Benchmark
+	 */
+	void Benchmark::run(timing_cb tcb) {
+		runProcess(tcb);
+	}
+
 
 	/*
 	 * SimpleBenchmark
 	 */
 
-	void SimpleBenchmark::run(timing_cb tcb) {
+	void SimpleBenchmark::runProcess(timing_cb tcb) {
 		runBare(tcb);
 	}
 
@@ -57,9 +68,11 @@ namespace adhd {
 		maxThreads(4),
 		self(pthread_self()),
 		allThreads(new pthread_t[maxThreads])
-#if FLAG_LOCK
+#if defined FLAG_LOCK
 		,spin_go(ATOMIC_FLAG_INIT)
-#elif BOOL_LOCK
+#elif defined BOOL_LOCK
+#elif defined INT_LOCK
+		,spin_go(0)
 #endif
 	{
 		const auto min = minThreads;
@@ -76,34 +89,35 @@ namespace adhd {
 		delete[] allThreads;
 	}
 
-	void ThreadedBenchmark::runThreads(const unsigned num) {
-		const auto tmain = reinterpret_cast<void * (*)(void *)>(c_thread_main);
-		
-		delete context;
-		context = new ThreadContext(num);
-
-		auto bts = new BenchmarkThread[num];
-	
-		for (unsigned t = 0; t < num; ++t) {
-			bts[t] = BenchmarkThread {t, this};
-			const int rc = pthread_create(allThreads + t, NULL, tmain, bts + t);
-			if (rc)
-				throw system_error(rc, generic_category(), strerror(rc));
-		}
-
-		for (unsigned t = 0; t < num; ++t) {
-			pthread_join(allThreads[t], NULL);
-			allThreads[t] = self;
-		}
-
-		delete[] bts;
-	}
-
-	void ThreadedBenchmark::run(timing_cb tcb) {
+	void ThreadedBenchmark::runProcess(timing_cb tcb) {
 		const auto min = minThreads;
 		const auto max = maxThreads;
+		// range over threads
 		for (unsigned num = min; num <= max; ++num) {
-			runThreads(num);
+			// range over data sets
+			//SharedData::Iterator dataIter(data);
+			for (auto & a: *data) {}
+
+			const auto tmain = reinterpret_cast<void * (*)(void *)>(c_thread_main);
+
+			delete context;
+			context = new ThreadContext(num);
+
+			auto bts = new BenchmarkThread[num];
+
+			for (unsigned t = 0; t < num; ++t) {
+				bts[t] = BenchmarkThread {t, this};
+				const int rc = pthread_create(allThreads + t, NULL, tmain, bts + t);
+				if (rc)
+					throw system_error(rc, generic_category(), strerror(rc));
+			}
+
+			for (unsigned t = 0; t < num; ++t) {
+				pthread_join(allThreads[t], NULL);
+				allThreads[t] = self;
+			}
+
+			delete[] bts;
 		}
 	}
 
@@ -115,9 +129,11 @@ namespace adhd {
 		/*- barrier --------------------------------------------------------------*/
 		const int isSerial_init = context->init();
 		if (isSerial_init == PTHREAD_BARRIER_SERIAL_THREAD) {
-#if FLAG_LOCK
+#if defined FLAG_LOCK
 			spin_go.test_and_set();
-#elif BOOL_LOCK
+#elif defined BOOL_LOCK
+#elif defined INT_LOCK
+			spin_go = context->getNumThreads();
 #endif
 			setup(context->getNumThreads());
 		}
@@ -132,7 +148,7 @@ namespace adhd {
 
 		/*- barrier --------------------------------------------------------------*/
 		const int isSerial_go = context->go();
-#if FLAG_LOCK
+#if defined FLAG_LOCK
 		if (isSerial_init == PTHREAD_BARRIER_SERIAL_THREAD) {
 			sleep(1);
 			spin_go.clear();
@@ -141,7 +157,10 @@ namespace adhd {
 			while(spin_go.test_and_set());
 			spin_go.clear();
 		}
-#elif BOOL_LOCK
+#elif defined BOOL_LOCK
+#elif defined INT_LOCK
+		spin_go--;
+		while(spin_go);
 #endif
 		runBare(threadNum);
 

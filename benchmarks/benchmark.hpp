@@ -1,6 +1,6 @@
 #pragma once
 
-#define SPIN_LOCK
+#define INT_LOCK
 
 #include "prettyprint.hpp"
 
@@ -28,13 +28,14 @@ namespace adhd {
 
 	class Benchmark {
 		public:
-			virtual void run(timing_cb tcb) = 0;
+			void run(timing_cb tcb);
+			virtual void runProcess(timing_cb tcb) = 0;
 			virtual ~Benchmark() {};
 	};
 
 	class SimpleBenchmark: public Benchmark {
 		public:
-			virtual void run(timing_cb tcb) final override;
+			virtual void runProcess(timing_cb tcb) final override;
 			virtual void runBare(timing_cb tcb) = 0;
 			virtual ~SimpleBenchmark() {};
 	};
@@ -42,11 +43,30 @@ namespace adhd {
 	class ThreadedBenchmark: public Benchmark {
 		public:
 			ThreadedBenchmark(const Config & cfg);
-			virtual void run(timing_cb tcb) final override;
+			virtual void runProcess(timing_cb tcb) final override;
+			//virtual void runThread(timing_cb tcb) = 0;
 			virtual void setup(unsigned numThreads) = 0;
 			virtual void warmup() = 0;
 			virtual void runBare(unsigned threadNum) = 0;
 			virtual ~ThreadedBenchmark();
+
+			struct SharedData {
+				virtual void next() = 0;
+				class Iterator: public std::iterator<std::input_iterator_tag, SharedData> {
+					public:
+						Iterator(SharedData * _sd): sd(_sd) {}
+						Iterator(const Iterator & i): sd(i.sd) {}
+						Iterator & operator++() { sd->next(); return *this; }
+						Iterator operator++(int) { Iterator tmp(*this); operator++(); return tmp; }
+						bool operator==(const Iterator & rhs) { return sd == rhs.sd; }
+						bool operator!=(const Iterator & rhs) { return sd != rhs.sd; }
+						SharedData & operator*() { return *sd; }
+					private:
+						SharedData * sd;
+				};
+				virtual Iterator begin() const = 0;
+				virtual Iterator end() const = 0;
+			};
 
 		protected:
 			void reportTimings(unsigned threadNum, const Timings & timings);
@@ -54,7 +74,6 @@ namespace adhd {
 		private:
 			friend struct BenchmarkThread;
 
-			void runThreads(unsigned num);
 			void * runThread(unsigned threadNum);
 
 			struct ThreadContext {
@@ -83,14 +102,19 @@ namespace adhd {
 					pthread_barrier_t b_set;
 					pthread_barrier_t b_go;
 					pthread_barrier_t b_finish;
-			} * context;
+			};
+
+			ThreadContext * context;
+			SharedData * data;
 			const unsigned minThreads;
 			const unsigned maxThreads;
 			const pthread_t self;
 			pthread_t * allThreads;
-#if FLAG_LOCK
+#if defined FLAG_LOCK
 			std::atomic_flag spin_go;
-#elif BOOL_LOCK
+#elif defined BOOL_LOCK
+#elif defined INT_LOCK
+			std::atomic_int spin_go;
 #endif
 	};
 
