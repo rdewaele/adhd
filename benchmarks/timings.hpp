@@ -1,5 +1,10 @@
 #pragma once
 
+#include "prettyprint.hpp"
+
+#include <functional>
+#include <iostream>
+
 namespace adhd {
 
 	class Timings: public prettyprint::CSV, public prettyprint::Human {

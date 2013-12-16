@@ -5,14 +5,6 @@
 #include <stdexcept>
 #include <system_error>
 
-#if defined FLAG_LOCK
-#include <unistd.h>
-#elif defined BOOL_LOCK
-#include <unistd.h>
-#elif defined INT_LOCK
-#include <unistd.h>
-#endif
-
 using namespace std;
 
 namespace adhd {
@@ -82,13 +74,8 @@ namespace adhd {
 		minThreads(1),
 		maxThreads(4),
 		self(pthread_self()),
-		allThreads(new pthread_t[maxThreads])
-#if defined FLAG_LOCK
-		,spin_go(ATOMIC_FLAG_INIT)
-#elif defined BOOL_LOCK
-#elif defined INT_LOCK
-		,spin_go(0)
-#endif
+		allThreads(new pthread_t[maxThreads]),
+		spin_go(0)
 	{
 		const auto min = minThreads;
 		const auto max = maxThreads;
@@ -146,12 +133,7 @@ namespace adhd {
 	void ThreadedBenchmark::init(unsigned threadNum) {
 		const int isSerial = pthread_barrier_wait(&context->init);
 		if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial) {
-#if defined FLAG_LOCK
-			spin_go.test_and_set();
-#elif defined BOOL_LOCK
-#elif defined INT_LOCK
 			spin_go = context->getNumThreads();
-#endif
 			runPhase(Phase::INIT, threadNum);
 		}
 	}
@@ -168,20 +150,8 @@ namespace adhd {
 
 	void ThreadedBenchmark::go(unsigned threadNum) {
 		pthread_barrier_wait(&context->go);
-#if defined FLAG_LOCK
-		if (isSerial_init == PTHREAD_BARRIER_SERIAL_THREAD) {
-			sleep(1);
-			spin_go.clear();
-		}
-		else {
-			while(spin_go.test_and_set());
-			spin_go.clear();
-		}
-#elif defined BOOL_LOCK
-#elif defined INT_LOCK
 		spin_go--;
 		while(spin_go);
-#endif
 		runPhase(Phase::GO, threadNum);
 	}
 

@@ -1,16 +1,11 @@
 #pragma once
 
-#define INT_LOCK
-
 #include "config.hpp"
-#include "prettyprint.hpp"
 #include "timings.hpp"
 
 #include <atomic>
-#include <functional>
-#include <iostream>
 #include <iterator>
-#include <string>
+#include <pthread.h>
 
 namespace adhd {
 
@@ -108,11 +103,6 @@ namespace adhd {
 			const unsigned maxThreads;
 			const pthread_t self;
 			pthread_t * allThreads;
-#if defined FLAG_LOCK
-			std::atomic_flag spin_go;
-#elif defined BOOL_LOCK
-#elif defined INT_LOCK
 			std::atomic_int spin_go;
-#endif
 	};
 }
