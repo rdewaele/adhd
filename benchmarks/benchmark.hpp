@@ -4,6 +4,7 @@
 
 #include "config.hpp"
 #include "prettyprint.hpp"
+#include "timings.hpp"
 
 #include <atomic>
 #include <functional>
@@ -16,10 +17,6 @@ namespace adhd {
 	class Benchmark;
 	class SimpleBenchmark;
 	class ThreadedBenchmark;
-	class Timings;
-
-	typedef void timing_cb_t(const Timings &);
-	typedef std::function<timing_cb_t> timing_cb;
 
 	class BenchmarkFactory {
 		public:
@@ -117,14 +114,5 @@ namespace adhd {
 #elif defined INT_LOCK
 			std::atomic_int spin_go;
 #endif
-	};
-
-	class Timings: public prettyprint::CSV, public prettyprint::Human {
-		public:
-			virtual ~Timings() = default;
-			virtual Timings * clone() const = 0;
-			virtual std::ostream & formatHeader(std::ostream & out) const override = 0;
-			virtual std::ostream & formatCSV(std::ostream & out) const override = 0;
-			virtual std::ostream & formatHuman(std::ostream & out) const override = 0;
 	};
 }
