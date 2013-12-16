@@ -2,11 +2,13 @@
 
 #define INT_LOCK
 
+#include "config.hpp"
 #include "prettyprint.hpp"
 
 #include <atomic>
 #include <functional>
 #include <iostream>
+#include <iterator>
 #include <string>
 
 namespace adhd {
@@ -14,7 +16,6 @@ namespace adhd {
 	class Benchmark;
 	class SimpleBenchmark;
 	class ThreadedBenchmark;
-	class Config;
 	class Timings;
 
 	typedef void timing_cb_t(const Timings &);
@@ -28,58 +29,49 @@ namespace adhd {
 
 	class Benchmark {
 		public:
+			Benchmark(const Config & cfg);
+			virtual ~Benchmark();
 			void run(timing_cb tcb);
 			virtual void runProcess(timing_cb tcb) = 0;
-			virtual ~Benchmark() {};
+		protected:
+			const Config * const config;
 	};
 
 	class SimpleBenchmark: public Benchmark {
 		public:
+			SimpleBenchmark(const Config & cfg);
 			virtual void runProcess(timing_cb tcb) final override;
 			virtual void runBare(timing_cb tcb) = 0;
 			virtual ~SimpleBenchmark() {};
 	};
 
 	class ThreadedBenchmark: public Benchmark {
+		protected:
+			class Context;
+			class ContextFactory;
+
 		public:
-			ThreadedBenchmark(const Config & cfg);
+			ThreadedBenchmark(const Config & cfg, const ContextFactory & ctxFac = ContextFactory());
 			virtual void runProcess(timing_cb tcb) final override;
-			//virtual void runThread(timing_cb tcb) = 0;
-			virtual void setup(unsigned numThreads) = 0;
-			virtual void warmup() = 0;
-			virtual void runBare(unsigned threadNum) = 0;
 			virtual ~ThreadedBenchmark();
 
-			struct SharedData {
-				virtual void next() = 0;
-				class Iterator: public std::iterator<std::input_iterator_tag, SharedData> {
-					public:
-						Iterator(SharedData * _sd): sd(_sd) {}
-						Iterator(const Iterator & i): sd(i.sd) {}
-						Iterator & operator++() { sd->next(); return *this; }
-						Iterator operator++(int) { Iterator tmp(*this); operator++(); return tmp; }
-						bool operator==(const Iterator & rhs) { return sd == rhs.sd; }
-						bool operator!=(const Iterator & rhs) { return sd != rhs.sd; }
-						SharedData & operator*() { return *sd; }
-					private:
-						SharedData * sd;
-				};
-				virtual Iterator begin() const = 0;
-				virtual Iterator end() const = 0;
-			};
-
 		protected:
+			enum class Phase { INIT, READY, SET, GO, FINISH };
+
+			virtual void runPhase(Phase p, unsigned threadNum) = 0;
+
 			void reportTimings(unsigned threadNum, const Timings & timings);
 
-		private:
-			friend struct BenchmarkThread;
-
-			void * runThread(unsigned threadNum);
-
-			struct ThreadContext {
+			class ContextFactory {
 				public:
-					ThreadContext(const unsigned numThreads);
-					~ThreadContext();
+					virtual Context * makeContext(unsigned numThreads) const;
+					virtual ~ContextFactory() = default;
+			};
+
+			class Context {
+				public:
+					Context(const unsigned numThreads);
+					~Context();
 
 					inline unsigned getNumThreads() { return numThreads; }
 
@@ -87,25 +79,34 @@ namespace adhd {
 					void deleteTimings();
 					void deleteTiming(const unsigned threadNum);
 
-					inline int init()   { return pthread_barrier_wait(&b_init); }
-					inline int ready()  { return pthread_barrier_wait(&b_ready); }
-					inline int set()    { return pthread_barrier_wait(&b_set); }
-					inline int go()     { return pthread_barrier_wait(&b_go); }
-					inline int finish() { return pthread_barrier_wait(&b_finish); }
 
 				private:
+					friend class ThreadedBenchmark;
 					unsigned numThreads;
 					Timings ** timings;
 
-					pthread_barrier_t b_init;
-					pthread_barrier_t b_ready;
-					pthread_barrier_t b_set;
-					pthread_barrier_t b_go;
-					pthread_barrier_t b_finish;
+					pthread_barrier_t init;
+					pthread_barrier_t ready;
+					pthread_barrier_t set;
+					pthread_barrier_t go;
+					pthread_barrier_t finish;
+
+					std::atomic_flag cont;
 			};
 
-			ThreadContext * context;
-			SharedData * data;
+		private:
+			void * runThread(unsigned threadNum);
+
+			void init(unsigned threadNum);
+			void ready(unsigned threadNum);
+			void set(unsigned threadNum);
+			void go(unsigned threadNum);
+			void finish(unsigned threadNum);
+
+			friend struct BenchmarkThread;
+
+			Context * context;
+			ContextFactory * contextFactory;
 			const unsigned minThreads;
 			const unsigned maxThreads;
 			const pthread_t self;
@@ -116,12 +117,6 @@ namespace adhd {
 #elif defined INT_LOCK
 			std::atomic_int spin_go;
 #endif
-	};
-
-	class Config {
-		public:
-			template <typename T>
-				T get(const std::string & s) const;
 	};
 
 	class Timings: public prettyprint::CSV, public prettyprint::Human {
