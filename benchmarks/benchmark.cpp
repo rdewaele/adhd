@@ -8,39 +8,25 @@
 using namespace std;
 
 namespace adhd {
-
-	static const char keyMinThreads[] = "minThreads";
-	static const char keyMaxThreads[] = "maxThreads";
-
 	/*
-	 * Benchmark
+	 * SingleBenchmark
 	 */
+	SingleBenchmark::SingleBenchmark(): reset(false) {}
 
-	Benchmark::Benchmark(const Config & cfg):
-		config(cfg.clone())
-	{}
-
-	Benchmark::~Benchmark() {
-		delete config;
+	ostream & SingleBenchmark::toOStream(ostream & os) const {
+		return os << "SingleBenchmark instance" << endl;
 	}
 
-	void Benchmark::run(timing_cb tcb) {
-		runProcess(tcb);
+	void SingleBenchmark::run(timing_cb cb) { runSingle(cb); }
+	void SingleBenchmark::next() { reset = !reset; }
+	bool SingleBenchmark::atMin() const { return !reset; }
+	bool SingleBenchmark::atMax() const { return reset; }
+	void SingleBenchmark::gotoBegin() { reset = false; }
+	void SingleBenchmark::gotoEnd() { reset = true; }
+	bool SingleBenchmark::equals(const RangeInterface & ri) const {
+		const SingleBenchmark & sb = dynamic_cast<const SingleBenchmark &>(ri);
+		return reset == sb.reset;
 	}
-
-
-	/*
-	 * SimpleBenchmark
-	 */
-
-	SimpleBenchmark::SimpleBenchmark(const Config & cfg):
-		Benchmark(cfg)
-	{}
-
-	void SimpleBenchmark::runProcess(timing_cb tcb) {
-		runBare(tcb);
-	}
-
 
 	/*
 	 * ThreadedBenchmark
@@ -64,100 +50,130 @@ namespace adhd {
 			return bt->runThread();
 		}
 	}
+	static auto threadMain = reinterpret_cast<void * (*)(void *)>(c_thread_main);
 
-	ThreadedBenchmark::ThreadedBenchmark(const Config & cfg, const ContextFactory & ctxFac):
-		Benchmark(cfg),
-		context(NULL),
-		contextFactory(new ContextFactory(ctxFac)),
-		/* minThreads(cfg.get<unsigned>(keyMinThreads)),
-		maxThreads(cfg.get<unsigned>(keyMaxThreads)) */
-		minThreads(1),
-		maxThreads(4),
-		self(pthread_self()),
-		allThreads(new pthread_t[maxThreads]),
+	ThreadedBenchmark::ThreadedBenchmark(unsigned min, unsigned max):
+		threadRange(min, max),
+		allThreads(new pthread_t[max]),
 		spin_go(0)
-	{
-		const auto min = minThreads;
-		const auto max = maxThreads;
-		for (unsigned t = min; t < max; ++t)
-			allThreads[t] = self;
-		// TODO config implementation
-	}
+	{}
+
+	ThreadedBenchmark::ThreadedBenchmark(const ThreadedBenchmark & tb):
+		threadRange(tb.threadRange),
+		allThreads(new pthread_t[tb.maxThreads()]),
+		spin_go(0)
+	{}
 
 	ThreadedBenchmark::~ThreadedBenchmark() {
-		// XXX when an exception occurs, threads may be orphaned
-		// however joining them here would very like result in a deadlock
-		delete context;
-		delete contextFactory;
 		delete[] allThreads;
 	}
 
-	void ThreadedBenchmark::runProcess(timing_cb tcb) {
-		const auto min = minThreads;
-		const auto max = maxThreads;
-		// range over threads
-		for (unsigned num = min; num <= max; ++num) {
-			// range over configs
-			for (auto & cfg: *config) {
+	void ThreadedBenchmark::run(timing_cb tcb) {
+		do {
+			const unsigned nthr = numThreads();
 
-				const auto tmain = reinterpret_cast<void * (*)(void *)>(c_thread_main);
+			pthread_barrier_init(&init_b, NULL, nthr);
+			pthread_barrier_init(&ready_b, NULL, nthr);
+			pthread_barrier_init(&set_b, NULL, nthr);
+			pthread_barrier_init(&go_b, NULL, nthr);
+			pthread_barrier_init(&finish_b, NULL, nthr);
+			auto bmThreads = new BenchmarkThread[nthr];
 
-				delete context;
-				// TODO: make thread-specific config, and change makeContext to accept a config state
-				context = contextFactory->makeContext(num);
-
-				auto bts = new BenchmarkThread[num];
-
-				for (unsigned t = 0; t < num; ++t) {
-					bts[t] = BenchmarkThread {t, this};
-					const int rc = pthread_create(allThreads + t, NULL, tmain, bts + t);
-					if (rc)
-						throw system_error(rc, generic_category(), strerror(rc));
-				}
-
-				cerr << "joining threads" << endl;
-				for (unsigned t = 0; t < num; ++t) {
-					pthread_join(allThreads[t], NULL);
-					allThreads[t] = self;
-				}
-
-				delete[] bts;
+			cerr << "create " << nthr << " threads" << endl;
+			for (unsigned t = 0; t < nthr; ++t) {
+				bmThreads[t] = BenchmarkThread {t, this};
+				const int rc = pthread_create(allThreads + t, NULL, threadMain, bmThreads + t);
+				if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
 			}
-		}
+
+			cerr << "joining threads" << endl;
+			for (unsigned t = 0; t < nthr; ++t)
+				pthread_join(allThreads[t], NULL);
+
+			pthread_barrier_destroy(&init_b);
+			pthread_barrier_destroy(&ready_b);
+			pthread_barrier_destroy(&set_b);
+			pthread_barrier_destroy(&go_b);
+			pthread_barrier_destroy(&finish_b);
+			delete[] bmThreads;
+		} while (!atMax() && (next(), true));
+	}
+
+	void ThreadedBenchmark::next() {
+		threadRange.next();
+	}
+	
+	bool ThreadedBenchmark::atMin() const {
+		return threadRange.atMin();
+	}
+	
+	bool ThreadedBenchmark::atMax() const {
+		return threadRange.atMax();
+	}
+	
+	void ThreadedBenchmark::gotoBegin() {
+		threadRange.gotoBegin();
+	}
+	
+	void ThreadedBenchmark::gotoEnd() {
+		threadRange.gotoEnd();
+	}
+	
+	bool ThreadedBenchmark::equals(const RangeInterface & ri) const {
+		const ThreadedBenchmark & tmp = dynamic_cast<const ThreadedBenchmark &>(ri);
+		return threadRange.equals(tmp.threadRange);
+	}
+
+	ostream & ThreadedBenchmark::toOStream(ostream & os) const {
+		os << "ThreadedBenchmark: ";
+		return threadRange.toOStream(os);
+	}
+
+	unsigned ThreadedBenchmark::minThreads() const {
+		return threadRange.min;
+	}
+
+	unsigned ThreadedBenchmark::maxThreads() const {
+		return threadRange.max;
+	}
+
+	unsigned ThreadedBenchmark::numThreads() const {
+		return threadRange.getValue();
 	}
 
 	void ThreadedBenchmark::reportTimings(unsigned threadNum, const Timings & timings) {
-		context->storeTimings(threadNum, timings);
+		//context->storeTimings(threadNum, timings);
 	}
 
 	void ThreadedBenchmark::init(unsigned threadNum) {
-		const int isSerial = pthread_barrier_wait(&context->init);
+		const int isSerial = pthread_barrier_wait(&init_b);
 		if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial) {
-			spin_go = context->getNumThreads();
+			spin_go = numThreads();
 			runPhase(Phase::INIT, threadNum);
 		}
 	}
 
 	void ThreadedBenchmark::ready(unsigned threadNum) {
-		pthread_barrier_wait(&context->ready);
+		pthread_barrier_wait(&ready_b);
 		runPhase(Phase::READY, threadNum);
 	}
 
 	void ThreadedBenchmark::set(unsigned threadNum) {
-		pthread_barrier_wait(&context->set);
+		pthread_barrier_wait(&set_b);
 		runPhase(Phase::SET, threadNum);
 	}
 
 	void ThreadedBenchmark::go(unsigned threadNum) {
-		pthread_barrier_wait(&context->go);
+		pthread_barrier_wait(&go_b);
 		spin_go--;
 		while(spin_go);
 		runPhase(Phase::GO, threadNum);
 	}
 
 	void ThreadedBenchmark::finish(unsigned threadNum) {
-		pthread_barrier_wait(&context->finish);
-		runPhase(Phase::FINISH, threadNum);
+		const int isSerial = pthread_barrier_wait(&finish_b);
+		if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial)
+			runPhase(Phase::FINISH, threadNum);
 	}
 
 	void * ThreadedBenchmark::runThread(unsigned threadNum) {
@@ -166,70 +182,5 @@ namespace adhd {
 		set(threadNum);
 		go(threadNum);
 		finish(threadNum);
-	}
-
-	/*
-	 * Context
-	 */
-
-	ThreadedBenchmark::Context::Context(const unsigned _numThreads):
-		numThreads(_numThreads),
-		timings(new Timings * [_numThreads]),
-		cont(true)
-	{
-		for (unsigned t = 0; t < numThreads; ++t)
-			timings[t] = NULL;
-
-		pthread_barrier_init(&init, NULL, numThreads);
-		pthread_barrier_init(&ready, NULL, numThreads);
-		pthread_barrier_init(&set, NULL, numThreads);
-		pthread_barrier_init(&go, NULL, numThreads);
-		pthread_barrier_init(&finish, NULL, numThreads);
-	}
-
-	ThreadedBenchmark::Context::~Context() {
-		pthread_barrier_destroy(&init);
-		pthread_barrier_destroy(&ready);
-		pthread_barrier_destroy(&set);
-		pthread_barrier_destroy(&go);
-		pthread_barrier_destroy(&finish);
-
-		delete[] timings;
-	}
-
-	void ThreadedBenchmark::Context::storeTimings(const unsigned threadNum, const Timings & threadTimings) {
-		if (threadNum >= numThreads) {
-			// TODO exception
-			throw runtime_error("request to store timings for an out of bound thread index");
-			return;
-		}
-
-		delete timings[threadNum];
-		timings[threadNum] = threadTimings.clone();
-	}
-
-	void ThreadedBenchmark::Context::deleteTimings() {
-		for (unsigned t = 0; t < numThreads; ++t) {
-			delete timings[t];
-			timings[t] = NULL;
-		}
-	}
-
-	void ThreadedBenchmark::Context::deleteTiming(const unsigned threadNum) {
-		if (threadNum >= numThreads)
-			// TODO exception
-			throw runtime_error("request to store timings for an out of bound thread index");
-			return;
-
-		delete timings[threadNum];
-		timings[threadNum] = NULL;
-	}
-
-	/*
-	 * ContextFactory
-	 */
-
-	ThreadedBenchmark::Context * ThreadedBenchmark::ContextFactory::makeContext(unsigned numThreads) const {
-		return new Context(numThreads);
 	}
 }

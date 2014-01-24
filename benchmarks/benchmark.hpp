@@ -1,6 +1,7 @@
 #pragma once
 
 #include "config.hpp"
+#include "range.hpp"
 #include "timings.hpp"
 
 #include <atomic>
@@ -9,82 +10,73 @@
 
 namespace adhd {
 
-	class Benchmark;
-	class SimpleBenchmark;
-	class ThreadedBenchmark;
+	class BenchmarkInterface: public virtual RangeInterface {
+		public:
+			virtual void run(timing_cb tcb) = 0;
+			virtual ~BenchmarkInterface() = default;
+	};
 
 	class BenchmarkFactory {
 		public:
-			virtual Benchmark * makeBenchmark(const Config & cfg) const = 0;
+			virtual BenchmarkInterface * makeBenchmark(const Config & cfg) const = 0;
 			virtual ~BenchmarkFactory() = default;
 	};
 
-	class Benchmark {
+	// One-shot benchmark: no variants
+	class SingleBenchmark: public BenchmarkInterface {
 		public:
-			Benchmark(const Config & cfg);
-			virtual ~Benchmark();
-			void run(timing_cb tcb);
-			virtual void runProcess(timing_cb tcb) = 0;
+			SingleBenchmark();
+
+			// RangeInterface
+			virtual std::ostream & toOStream(std::ostream & os) const override;
+
+			// BenchmarkInterface
+			virtual void run(timing_cb) final override;
+
+			// RangeInterface
+			virtual void next() final override;
+			virtual bool atMin() const final override;
+			virtual bool atMax() const final override;
+			virtual void gotoBegin() final override;
+			virtual void gotoEnd() final override;
+			virtual bool equals(const RangeInterface &) const final override;
+
 		protected:
-			const Config * const config;
+			virtual void runSingle(timing_cb) const = 0;
+
+		private:
+			bool reset;
 	};
 
-	class SimpleBenchmark: public Benchmark {
+	class ThreadedBenchmark: public BenchmarkInterface {
 		public:
-			SimpleBenchmark(const Config & cfg);
-			virtual void runProcess(timing_cb tcb) final override;
-			virtual void runBare(timing_cb tcb) = 0;
-			virtual ~SimpleBenchmark() {};
-	};
-
-	class ThreadedBenchmark: public Benchmark {
-		protected:
-			class Context;
-			class ContextFactory;
-
-		public:
-			ThreadedBenchmark(const Config & cfg, const ContextFactory & ctxFac = ContextFactory());
-			virtual void runProcess(timing_cb tcb) final override;
+			ThreadedBenchmark(unsigned minThreads, unsigned maxThreads);
+			ThreadedBenchmark(const ThreadedBenchmark &);
 			virtual ~ThreadedBenchmark();
+
+			// BenchmarkInterface
+			virtual void run(timing_cb tcb) final override;
+
+			// RangeInterface
+			virtual void next() override;
+			virtual bool atMin() const override;
+			virtual bool atMax() const override;
+			virtual void gotoBegin() override;
+			virtual void gotoEnd() override;
+			virtual bool equals(const RangeInterface &) const override;
+			virtual std::ostream & toOStream(std::ostream & os) const override;
+
+			unsigned minThreads() const;
+			unsigned maxThreads() const;
+			unsigned numThreads() const;
 
 		protected:
 			enum class Phase { INIT, READY, SET, GO, FINISH };
 
 			virtual void runPhase(Phase p, unsigned threadNum) = 0;
+			inline void spinlock() const { while(spin_go); }
 
 			void reportTimings(unsigned threadNum, const Timings & timings);
-
-			class ContextFactory {
-				public:
-					virtual Context * makeContext(unsigned numThreads) const;
-					virtual ~ContextFactory() = default;
-			};
-
-			class Context {
-				public:
-					Context(const unsigned numThreads);
-					~Context();
-
-					inline unsigned getNumThreads() { return numThreads; }
-
-					void storeTimings(const unsigned threadNum, const Timings & timings);
-					void deleteTimings();
-					void deleteTiming(const unsigned threadNum);
-
-
-				private:
-					friend class ThreadedBenchmark;
-					unsigned numThreads;
-					Timings ** timings;
-
-					pthread_barrier_t init;
-					pthread_barrier_t ready;
-					pthread_barrier_t set;
-					pthread_barrier_t go;
-					pthread_barrier_t finish;
-
-					std::atomic_flag cont;
-			};
 
 		private:
 			void * runThread(unsigned threadNum);
@@ -97,12 +89,15 @@ namespace adhd {
 
 			friend struct BenchmarkThread;
 
-			Context * context;
-			ContextFactory * contextFactory;
-			const unsigned minThreads;
-			const unsigned maxThreads;
-			const pthread_t self;
+			Range<unsigned> threadRange;
 			pthread_t * allThreads;
+
 			std::atomic_int spin_go;
+
+			pthread_barrier_t init_b;
+			pthread_barrier_t ready_b;
+			pthread_barrier_t set_b;
+			pthread_barrier_t go_b;
+			pthread_barrier_t finish_b;
 	};
 }

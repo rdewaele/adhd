@@ -13,15 +13,10 @@ using namespace adhd;
 
 class PhonyTimings: public Timings {
 	public:
-		PhonyTimings():
-			start(0),
-			stop(0)
-	{}
+		PhonyTimings(): start(0), stop(0) {}
 
 		PhonyTimings(long long unsigned _start, long long unsigned _stop):
-			start(_start),
-			stop(_stop)
-	{}
+			start(_start), stop(_stop) {}
 
 		virtual Timings * clone() const override {
 			auto temp = new PhonyTimings();
@@ -49,68 +44,19 @@ class PhonyTimings: public Timings {
 };
 
 //
-// CONFIG
-//
-
-class PhonyConfig: public Config {
-	public:
-		PhonyConfig(int iters): iterations(iters) {}
-
-		virtual PhonyConfig * clone() const final override {
-			return new PhonyConfig(iterations);
-		}
-
-		virtual Iterator begin() const final override {
-			return Iterator(PhonyState(iterations));
-		}
-
-		virtual Iterator end() const final override {
-			return Iterator(PhonyState(0));
-		}
-
-		class PhonyState: public State {
-			public:
-				PhonyState(int _iteration): iteration(_iteration) {}
-				PhonyState(const PhonyState & ps): iteration(ps.iteration) {}
-
-				virtual bool equals(const State & s) const final override {
-					const PhonyState & ps = dynamic_cast<const PhonyState &>(s);
-					return ps.iteration == iteration;
-				}
-
-				virtual void next() final override {
-					if (iteration > 0)
-						--iteration;
-				}
-
-				virtual PhonyState * clone() const final override {
-					return new PhonyState(*this);
-				}
-
-			private:
-				int iteration;
-		};
-
-	private:
-		const int iterations;
-};
-
-//
 // SIMPLE
 //
 
-class TestSimple: public SimpleBenchmark {
+class TestSingle: public SingleBenchmark {
 	public:
-		TestSimple():
-			SimpleBenchmark(Config())
-	{}
-
-		virtual void runBare(timing_cb tcb) override {
+		virtual void runSingle(timing_cb tcb) const final override {
 			long long unsigned start = rdtsc();
 			cout << "I am Simple!" << endl;
 			long long unsigned stop = rdtsc();
 			tcb(PhonyTimings(start, stop));
 		}
+
+		virtual TestSingle * clone() const override { return new TestSingle(); }
 };
 
 //
@@ -118,80 +64,76 @@ class TestSimple: public SimpleBenchmark {
 //
 
 class TestThreaded: public ThreadedBenchmark {
-	private:
-		class TestContext;
-		class TestContextFactory;
-
 	public:
-		TestThreaded(int iterations):
-			ThreadedBenchmark(PhonyConfig(iterations), TestContextFactory())
+		TestThreaded(unsigned min, unsigned max, unsigned iters)
+			: ThreadedBenchmark(min, max),
+			iterations(Range<unsigned>(0, iters)),
+			shared(nullptr),
+			timings(nullptr),
+			startCycles(nullptr)
 	{}
 
-		virtual void runPhase(Phase p, unsigned threadNum) override {
+		virtual TestThreaded * clone() const override { return new TestThreaded(*this); }	
+
+		virtual void runPhase(Phase p, unsigned threadNum) final override {
 			const char * str;
+			long long unsigned start = 0;
+			long long unsigned stop = 0;
 			switch (p) {
 				case Phase::INIT:
-					str = "init";
-					break;
+					{
+						const unsigned nthr = numThreads();
+						shared = new unsigned[nthr];
+						timings = new PhonyTimings[nthr];
+						startCycles = new long long unsigned[nthr];
+						str = "init";
+						break;
+					}
 				case Phase::READY:
+					shared[threadNum] = threadNum;
 					str = "ready";
 					break;
 				case Phase::SET:
+					shared[threadNum] += 1;
 					str = "set";
 					break;
 				case Phase::GO:
+					spinlock();
+					start = rdtsc();
+					shared[threadNum] *= 2;
+					stop = rdtsc();
+					// TODO: insert a barrier first, then process timings in order to
+					// minimize noise between threads (in threadedbenchmark implementation)
+					timings[threadNum] = PhonyTimings(start, stop);
+					startCycles[threadNum] = start;
 					str = "go";
 					break;
 				case Phase::FINISH:
+					delete[] shared;
+					for (unsigned t = 0; t < numThreads(); ++t)
+						cout << timings[t].asHuman();
+					delete[] timings;
+					long long unsigned min = startCycles[0];
+					long long unsigned max = startCycles[0];
+					for (unsigned t = 1; t < numThreads(); ++t) {
+						const long long unsigned current = startCycles[t];
+						if (min > current) { min = current; }
+						if (max < current) { max = current; }
+					}
+					cout << "start spread: " << max - min << " cycles" << endl;
+					delete[] startCycles;
 					str = "finish";
 					break;
 			}
-			cout << "thread " << threadNum << ": " << str << endl;
+			cout << "thread " << threadNum << " - " << str << " @ " << start << endl;
 		}
 
 	private:
-		class TestContext: public ThreadedBenchmark::Context {
-			public:
-				TestContext(const unsigned nthr):
-					Context(nthr)
-			{}
-		};
-
-		class TestContextFactory: public ThreadedBenchmark::ContextFactory {
-			public:
-				virtual TestContext * makeContext(unsigned numThreads) const override {
-					return new TestContext(numThreads);
-				}
-		};
-
-#if 0
-		virtual void * runThread(unsigned threadNum) override {
-			int data = 42;
-			while (syncSetup(threadNum)) { // do some shared var magic to return same val - also move outside this runThread ?
-				syncWarmup(threadNum);
-				for (int power = 0; power < 2; ++power) {
-					syncStart(threadNum);
-					long long unsigned start = rdtsc();
-					int result;
-					if (power) {
-						result = data;
-						for (int i = 0; i < power; ++i)
-							data *= data;
-					} else {
-						result = 1;
-					}
-					cout << "result: " << result << endl;
-					/*
-						 long long unsigned stop = rdtsc();
-						 auto temp = PhonyTimings(start, stop);
-						 cout << temp.asHuman();
-						 reportTimings(threadNum, temp);
-						 */
-				}
-			}
-			return NULL;
-		}
-#endif
+		// TODO: do something with these iterations :)
+		Range<unsigned> iterations;
+		unsigned * shared;
+		PhonyTimings * timings;
+		unsigned long long * startCycles;
 };
 
 int main() {
@@ -201,11 +143,11 @@ int main() {
 		cout << "human: " << timings.asHuman() << endl;
 	};
 	{
-		auto simple = TestSimple();
+		auto simple = TestSingle();
 		simple.run(phonyCallback);
 	}
 	{
-		auto * threaded = new TestThreaded(3);
+		auto * threaded = new TestThreaded(1, 3, 5);
 		threaded->run(phonyCallback);
 		delete threaded;
 	}
