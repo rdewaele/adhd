@@ -26,8 +26,8 @@ endif
 
 CXXFLAGS := -std=c++11 -W -Wall -Wextra -pedantic \
 	$(EXTRA_WARNINGS) \
-	$(CXXFLAGS) \
-	-g -O3
+	-g -O3 \
+	$(CXXFLAGS)
 #	-DNDEBUG
 
 LDLIBS += -lbenchmark -lm -lrt -lstdc++ -pthread
