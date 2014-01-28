@@ -67,7 +67,7 @@ class TestThreaded: public ThreadedBenchmark {
 	public:
 		TestThreaded(unsigned min, unsigned max, unsigned iters)
 			: ThreadedBenchmark(min, max),
-			iterations(Range<unsigned>(0, iters)),
+			iterations(Range<unsigned>(0, iters), Range<unsigned>(1, 2)),
 			shared(nullptr),
 			timings(nullptr),
 			startCycles(nullptr)
@@ -130,7 +130,7 @@ class TestThreaded: public ThreadedBenchmark {
 
 	private:
 		// TODO: do something with these iterations :)
-		Range<unsigned> iterations;
+		RangeSet<unsigned, unsigned> iterations;
 		unsigned * shared;
 		PhonyTimings * timings;
 		unsigned long long * startCycles;

@@ -1,5 +1,3 @@
-#include "tuple-utils.hpp"
-
 #include <iostream>
 #include <iterator>
 #include <memory>
@@ -138,9 +136,6 @@ namespace adhd {
 	// combinations of ranges in that order.
 	template <typename ... TS>
 		class RangeSet: public virtual RangeInterface {
-			// XXX implementation could use some tlc to remove the dependency on the
-			// tuple-utils header, as it doesn't fit the coding style of this project,
-			// and only one or two templates are used from said header
 			public:
 				typedef RangeSet<TS ...> type;
 				typedef std::tuple<Range<TS> ...> Fields;
@@ -171,7 +166,7 @@ namespace adhd {
 						return std::get<N>(values).max;
 					}
 
-				virtual void next() override { whileTrue(increment, values); }
+				virtual void next() override { whileTrue(&field_next); }
 
 				virtual bool equals(const RangeInterface & ri) const override {
 					const RangeSet & rhs = dynamic_cast<const RangeSet &>(ri);
@@ -180,23 +175,11 @@ namespace adhd {
 
 				const RangeSet & operator*() const { return *this; }
 
-				template <typename RT, typename AT, RT (RangeInterface::*M)(), unsigned N>
-					RT foo() {}
+				virtual void gotoBegin() override { whileTrue(&field_gotoBegin); }
+				virtual void gotoEnd() override { whileTrue(&field_gotoEnd); }
 
-				template <typename RT, typename AT, RT (RangeInterface::*M)(), unsigned N, typename S, typename ... SS>
-					RT foo() {
-						(std::get<N>(values).*M)();
-						foo<RT, AT, M, N+1, SS ...>();
-					}
-
-				template <typename RT, typename AT, RT (RangeInterface::*M)()>
-					RT foo() { foo<RT, AT, M, 0, TS ...>(); }
-
-				virtual void gotoBegin() override { foo<void, void, &RangeInterface::gotoBegin>(); }
-				virtual void gotoEnd() override { foo<void, void, &RangeInterface::gotoEnd>(); }
-
-				virtual bool atMin() const override { return whileTrue(atMinF, values); }
-				virtual bool atMax() const override { return whileTrue(atMaxF, values); }
+				virtual bool atMin() const override { return whileTrue(&field_atMin); }
+				virtual bool atMax() const override { return whileTrue(&field_atMax); }
 
 				template <typename ... TSS>
 					RangeSet<TS ..., TSS ...> append(const RangeSet<TSS ...> & rs) {
@@ -209,41 +192,73 @@ namespace adhd {
 					}
 
 				virtual std::ostream & toOStream(std::ostream & os) const override {
-					forEach(printer(os), values);
+					whileTrue(&field_toOStream, os);
 					return os;
 				}
 
 			private:
 				Fields values;
 
-				struct printer {
-					printer(std::ostream & os): out(os) {}
-					template <typename T>
-						std::ostream & operator() (const T & t) const {
-							return out << t << " ";
-						}
-					std::ostream & out;
-				};
+				// helper functions
 
-				struct {
-					template <typename T>
-						bool operator() (T & t) const {
-							return (++t).atMin();
-						}
-				} increment {};
+				// whiletrue applies a function to each separate field
+				// as long as the function application evaluates to true
+				template <std::size_t I = 0, typename FuncT, typename ... FuncArgs>
+					inline typename std::enable_if<I == sizeof...(TS), bool>::type
+					whileTrue(FuncT, FuncArgs & ...) {
+						return true;
+					}
 
-				struct {
-					template <typename T>
-						bool operator() (T & t) const {
-							return t.atMin();
-						}
-				} atMinF {};
+				template <std::size_t I = 0, typename FuncT, typename ... FuncArgs>
+					inline typename std::enable_if<I < sizeof...(TS), bool>::type
+					whileTrue(FuncT f, FuncArgs & ... fa) {
+						return f(std::get<I>(values), fa ...)
+							&& whileTrue<I +  1, FuncT>(f, fa ...);
+					}
 
-				struct {
-					template <typename T>
-						bool operator() (T & t) const {
-							return t.atMax();
-						}
-				} atMaxF {};
+				// whiletrue const-qualified variant
+				template <std::size_t I = 0, typename FuncT, typename ... FuncArgs>
+					inline typename std::enable_if<I == sizeof...(TS), bool>::type
+					whileTrue(FuncT, FuncArgs & ...) const {
+						return true;
+					}
+
+				template <std::size_t I = 0, typename FuncT, typename ... FuncArgs>
+					inline typename std::enable_if<I < sizeof...(TS), bool>::type
+					whileTrue(FuncT f, FuncArgs & ... fa) const {
+						return f(std::get<I>(values), fa ...)
+							&& whileTrue<I +  1, FuncT>(f, fa ...);
+					}
+
+
+				// wrappers conforming to whiletrue interface
+
+				static inline bool field_next(RangeInterface & r) {
+					r.next();
+					return r.atMin();
+				}
+
+				static inline bool field_atMin(const RangeInterface & r) {
+					return r.atMin();
+				}
+
+				static inline bool field_atMax(const RangeInterface & r) {
+					return r.atMax();
+				}
+
+				static inline bool field_gotoBegin(RangeInterface & r) {
+					r.gotoBegin();
+					return true;
+				}
+
+				static inline bool field_gotoEnd(RangeInterface & r) {
+					r.gotoEnd();
+					return true;
+				}
+
+				static inline bool field_toOStream(const RangeInterface & r, std::ostream & os) {
+					r.toOStream(os);
+					return true;
+				}
 		};
 }

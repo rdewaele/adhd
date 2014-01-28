@@ -1,13 +1,5 @@
 #pragma once
 
-#include <iterator>
-#include <memory>
-#include <stdexcept>
-#include <tuple>
-#include <type_traits>
-#include <utility>
-#include <vector>
-
 #if 1
 namespace adhd {
 	class Config {
