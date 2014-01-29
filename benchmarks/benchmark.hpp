@@ -13,7 +13,7 @@ namespace adhd {
 	class BenchmarkInterface: public virtual RangeInterface {
 		public:
 			virtual void run(timing_cb tcb) = 0;
-			virtual ~BenchmarkInterface() = default;
+			virtual ~BenchmarkInterface() throw() = default;
 	};
 
 	class BenchmarkFactory {
@@ -52,7 +52,7 @@ namespace adhd {
 		public:
 			ThreadedBenchmark(unsigned minThreads, unsigned maxThreads);
 			ThreadedBenchmark(const ThreadedBenchmark &);
-			virtual ~ThreadedBenchmark();
+			virtual ~ThreadedBenchmark() throw();
 
 			// BenchmarkInterface
 			virtual void run(timing_cb tcb) final override;

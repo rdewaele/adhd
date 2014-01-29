@@ -65,7 +65,7 @@ namespace adhd {
 		spin_go(0)
 	{}
 
-	ThreadedBenchmark::~ThreadedBenchmark() {
+	ThreadedBenchmark::~ThreadedBenchmark() throw() {
 		delete[] allThreads;
 	}
 
