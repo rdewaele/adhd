@@ -16,12 +16,6 @@ namespace adhd {
 			virtual ~BenchmarkInterface() throw() = default;
 	};
 
-	class BenchmarkFactory {
-		public:
-			virtual BenchmarkInterface * makeBenchmark(const Config & cfg) const = 0;
-			virtual ~BenchmarkFactory() = default;
-	};
-
 	// One-shot benchmark: no variants
 	class SingleBenchmark: public BenchmarkInterface {
 		public:
