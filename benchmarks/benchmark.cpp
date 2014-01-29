@@ -1,9 +1,11 @@
 #include "benchmark.hpp"
 
 #include <cstring>
-#include <pthread.h>
 #include <stdexcept>
 #include <system_error>
+
+#include <pthread.h>
+#include <unistd.h> // linux setaffinity: sysconf
 
 using namespace std;
 
@@ -69,6 +71,18 @@ namespace adhd {
 		delete[] allThreads;
 	}
 
+	// linux-specific way of setting thread affinity
+	static inline void setaffinity_linux(const unsigned tnum, const pthread_t & thread) {
+		int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+		// TODO if num_cores is 0, SIGFPE will be raised:
+		// throwing a nicer error would be ... nice :)
+		int core_id = tnum % num_cores;
+		cpu_set_t cpuset;
+		CPU_ZERO(&cpuset);
+		CPU_SET(core_id, &cpuset);
+		pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+	}
+
 	void ThreadedBenchmark::run(timing_cb tcb) {
 		do {
 			const unsigned nthr = numThreads();
@@ -85,6 +99,7 @@ namespace adhd {
 			for (unsigned t = 0; t < nthr; ++t) {
 				bmThreads[t] = BenchmarkThread {t, this};
 				const int rc = pthread_create(allThreads + t, NULL, threadMain, bmThreads + t);
+				setaffinity_linux(t, allThreads[t]);
 				if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
 			}
 
