@@ -55,7 +55,8 @@ namespace adhd {
 	ThreadedBenchmark::ThreadedBenchmark(unsigned min, unsigned max):
 		threadRange(min, max),
 		allThreads(new pthread_t[max]),
-		spin_go(0)
+		spin_go(0),
+		spin_go_wait(0)
 	{}
 
 	ThreadedBenchmark::ThreadedBenchmark(const ThreadedBenchmark & tb):
@@ -76,6 +77,7 @@ namespace adhd {
 			pthread_barrier_init(&ready_b, NULL, nthr);
 			pthread_barrier_init(&set_b, NULL, nthr);
 			pthread_barrier_init(&go_b, NULL, nthr);
+			pthread_barrier_init(&go_wait_b, NULL, nthr);
 			pthread_barrier_init(&finish_b, NULL, nthr);
 			auto bmThreads = new BenchmarkThread[nthr];
 
@@ -93,7 +95,7 @@ namespace adhd {
 			pthread_barrier_destroy(&init_b);
 			pthread_barrier_destroy(&ready_b);
 			pthread_barrier_destroy(&set_b);
-			pthread_barrier_destroy(&go_b);
+			pthread_barrier_destroy(&go_wait_b);
 			pthread_barrier_destroy(&finish_b);
 			delete[] bmThreads;
 		} while (!atMax() && (next(), true));
@@ -141,46 +143,38 @@ namespace adhd {
 		return threadRange.getValue();
 	}
 
-	void ThreadedBenchmark::reportTimings(unsigned threadNum, const Timings & timings) {
-		//context->storeTimings(threadNum, timings);
-	}
-
-	void ThreadedBenchmark::init(unsigned threadNum) {
-		const int isSerial = pthread_barrier_wait(&init_b);
-		if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial) {
-			spin_go = numThreads();
-			runPhase(Phase::INIT, threadNum);
-		}
-	}
-
-	void ThreadedBenchmark::ready(unsigned threadNum) {
-		pthread_barrier_wait(&ready_b);
-		runPhase(Phase::READY, threadNum);
-	}
-
-	void ThreadedBenchmark::set(unsigned threadNum) {
-		pthread_barrier_wait(&set_b);
-		runPhase(Phase::SET, threadNum);
-	}
-
-	void ThreadedBenchmark::go(unsigned threadNum) {
-		pthread_barrier_wait(&go_b);
-		spin_go--;
-		while(spin_go);
-		runPhase(Phase::GO, threadNum);
-	}
-
-	void ThreadedBenchmark::finish(unsigned threadNum) {
-		const int isSerial = pthread_barrier_wait(&finish_b);
-		if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial)
-			runPhase(Phase::FINISH, threadNum);
-	}
-
 	void * ThreadedBenchmark::runThread(unsigned threadNum) {
-		init(threadNum);
-		ready(threadNum);
-		set(threadNum);
-		go(threadNum);
-		finish(threadNum);
+		{ // init
+			const int isSerial = pthread_barrier_wait(&init_b);
+			if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial) {
+				spin_go = numThreads();
+				spin_go_wait = numThreads();
+				init(threadNum);
+			} }
+		{ // ready
+			pthread_barrier_wait(&ready_b);
+			ready(threadNum); }
+		{ // set
+			pthread_barrier_wait(&set_b);
+			set(threadNum); }
+		{ // go - always spin to keep calling go_wait_start() optional while
+			// maintaining starting time spread as small as possible
+			pthread_barrier_wait(&go_b);
+			--spin_go;
+			while(spin_go);
+			go(threadNum); }
+		{ // finish
+			const int isSerial = pthread_barrier_wait(&finish_b);
+			if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial)
+				finish(threadNum); }
+		return NULL;
 	}
+
+	// placeholders: no pure virtual methods to allow children to override no
+	// more methods than they need
+	void ThreadedBenchmark::init(unsigned) {}
+	void ThreadedBenchmark::ready(unsigned) {}
+	void ThreadedBenchmark::set(unsigned) {}
+	void ThreadedBenchmark::go(unsigned) {}
+	void ThreadedBenchmark::finish(unsigned) {}
 }

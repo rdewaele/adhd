@@ -71,33 +71,39 @@ namespace adhd {
 			unsigned numThreads() const;
 
 		protected:
-			enum class Phase { INIT, READY, SET, GO, FINISH };
+			// placeholders: no pure virtual methods to allow children to override no
+			// more methods than they need
+			virtual void init(unsigned threadNum);
+			virtual void ready(unsigned threadNum);
+			virtual void set(unsigned threadNum);
+			virtual void go(unsigned threadNum);
+			virtual void finish(unsigned threadNum);
 
-			virtual void runPhase(Phase p, unsigned threadNum) = 0;
-			inline void spinlock() const { while(spin_go); }
+			// synchronize in go() method before executing the actual benchmark code
+			// e.g. loop variant setup depending on local state
+			inline void go_wait_start() { --spin_go_wait; while(spin_go_wait); }
 
-			void reportTimings(unsigned threadNum, const Timings & timings);
+			// synchronize in go() method before executing operations depending on
+			// local state that are not part of the benchmark itself, e.g. process
+			// timing results
+			inline void go_wait_end() { pthread_barrier_wait(&go_wait_b); }
 
 		private:
 			void * runThread(unsigned threadNum);
-
-			void init(unsigned threadNum);
-			void ready(unsigned threadNum);
-			void set(unsigned threadNum);
-			void go(unsigned threadNum);
-			void finish(unsigned threadNum);
 
 			friend struct BenchmarkThread;
 
 			Range<unsigned> threadRange;
 			pthread_t * allThreads;
 
-			std::atomic_int spin_go;
+			std::atomic_uint spin_go;
+			std::atomic_uint spin_go_wait;
 
 			pthread_barrier_t init_b;
 			pthread_barrier_t ready_b;
 			pthread_barrier_t set_b;
 			pthread_barrier_t go_b;
+			pthread_barrier_t go_wait_b;
 			pthread_barrier_t finish_b;
 	};
 }

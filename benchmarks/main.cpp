@@ -75,57 +75,54 @@ class TestThreaded: public ThreadedBenchmark {
 
 		virtual TestThreaded * clone() const override { return new TestThreaded(*this); }	
 
-		virtual void runPhase(Phase p, unsigned threadNum) final override {
-			const char * str;
-			long long unsigned start = 0;
-			long long unsigned stop = 0;
-			switch (p) {
-				case Phase::INIT:
-					{
-						const unsigned nthr = numThreads();
-						shared = new unsigned[nthr];
-						timings = new PhonyTimings[nthr];
-						startCycles = new long long unsigned[nthr];
-						str = "init";
-						break;
-					}
-				case Phase::READY:
-					shared[threadNum] = threadNum;
-					str = "ready";
-					break;
-				case Phase::SET:
-					shared[threadNum] += 1;
-					str = "set";
-					break;
-				case Phase::GO:
-					spinlock();
-					start = rdtsc();
-					shared[threadNum] *= 2;
-					stop = rdtsc();
-					// TODO: insert a barrier first, then process timings in order to
-					// minimize noise between threads (in threadedbenchmark implementation)
-					timings[threadNum] = PhonyTimings(start, stop);
-					startCycles[threadNum] = start;
-					str = "go";
-					break;
-				case Phase::FINISH:
-					delete[] shared;
-					for (unsigned t = 0; t < numThreads(); ++t)
-						cout << timings[t].asHuman();
-					delete[] timings;
-					long long unsigned min = startCycles[0];
-					long long unsigned max = startCycles[0];
-					for (unsigned t = 1; t < numThreads(); ++t) {
-						const long long unsigned current = startCycles[t];
-						if (min > current) { min = current; }
-						if (max < current) { max = current; }
-					}
-					cout << "start spread: " << max - min << " cycles" << endl;
-					delete[] startCycles;
-					str = "finish";
-					break;
-			}
+		static void printPhase(unsigned threadNum, const char * str, long long unsigned start) {
 			cout << "thread " << threadNum << " - " << str << " @ " << start << endl;
+		}
+		virtual void init(unsigned threadNum) final override {
+			printPhase(threadNum, "init", rdtsc());
+			const unsigned nthr = numThreads();
+			shared = new unsigned[nthr];
+			timings = new PhonyTimings[nthr];
+			startCycles = new long long unsigned[nthr];
+		}
+
+		virtual void ready(unsigned threadNum) final override {
+			printPhase(threadNum, "ready", rdtsc());
+			shared[threadNum] = threadNum;
+		}
+
+		virtual void set(unsigned threadNum) final override {
+			printPhase(threadNum, "set", rdtsc());
+			shared[threadNum] += 1;
+		}
+
+		virtual void go(unsigned threadNum) final override {
+			go_wait_start();
+			const long long unsigned start = rdtsc();
+			shared[threadNum] *= 2;
+			const long long unsigned stop = rdtsc();
+			// sync before executing non-benchmarked operations
+			go_wait_end();
+			timings[threadNum] = PhonyTimings(start, stop);
+			startCycles[threadNum] = start;
+			printPhase(threadNum, "go", start);
+		}
+
+		virtual void finish(unsigned threadNum) final override {
+			printPhase(threadNum, "finish", rdtsc());
+			delete[] shared;
+			for (unsigned t = 0; t < numThreads(); ++t)
+				cout << timings[t].asHuman();
+			delete[] timings;
+			long long unsigned min = startCycles[0];
+			long long unsigned max = startCycles[0];
+			for (unsigned t = 1; t < numThreads(); ++t) {
+				const long long unsigned current = startCycles[t];
+				if (min > current) { min = current; }
+				if (max < current) { max = current; }
+			}
+			delete[] startCycles;
+			cout << "start spread: " << max - min << " cycles" << endl;
 		}
 
 	private:
@@ -147,7 +144,7 @@ int main() {
 		simple.run(phonyCallback);
 	}
 	{
-		auto * threaded = new TestThreaded(1, 3, 5);
+		auto * threaded = new TestThreaded(1, 10, 5);
 		threaded->run(phonyCallback);
 		delete threaded;
 	}
