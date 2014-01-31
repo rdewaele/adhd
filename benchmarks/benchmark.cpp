@@ -73,14 +73,31 @@ namespace adhd {
 
 	// linux-specific way of setting thread affinity
 	static inline void setaffinity_linux(const unsigned tnum, const pthread_t & thread) {
-		int num_cores = sysconf(_SC_NPROCESSORS_ONLN);
-		// TODO if num_cores is 0, SIGFPE will be raised:
-		// throwing a nicer error would be ... nice :)
-		int core_id = tnum % num_cores;
-		cpu_set_t cpuset;
-		CPU_ZERO(&cpuset);
-		CPU_SET(core_id, &cpuset);
-		pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+		// CPU_SET accepts int as its first argument, implying that the total
+		// number of cores also must be <= INT_MAX
+		const long sysret = sysconf(_SC_NPROCESSORS_ONLN);
+		switch (sysret) {
+			case -1:
+				throw system_error(-1, generic_category(), strerror(errno));
+				break;
+			case 0:
+				throw runtime_error("OS reports 0 processors online. What processor is this program even running on?");
+				break;
+			default:
+				long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+#ifdef __ICC
+				// XXX ICC spurious warning workaround - having a static_cast still
+				// triggers an implicit conversion warning, a C-style cast doesn't
+#define STATIC_CAST(t) (t)
+#else
+#define STATIC_CAST(t) static_cast<t>
+#endif
+				int core_id = STATIC_CAST(int)(tnum % num_cores);
+				cpu_set_t cpuset;
+				CPU_ZERO(&cpuset);
+				CPU_SET(core_id, &cpuset);
+				pthread_setaffinity_np(thread, sizeof(cpu_set_t), &cpuset);
+		}
 	}
 
 	void ThreadedBenchmark::run(timing_cb tcb) {
@@ -99,8 +116,8 @@ namespace adhd {
 			for (unsigned t = 0; t < nthr; ++t) {
 				bmThreads[t] = BenchmarkThread {t, this};
 				const int rc = pthread_create(allThreads + t, NULL, threadMain, bmThreads + t);
-				setaffinity_linux(t, allThreads[t]);
 				if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
+				setaffinity_linux(t, allThreads[t]);
 			}
 
 			cerr << "joining threads" << endl;
