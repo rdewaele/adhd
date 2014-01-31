@@ -61,12 +61,6 @@ namespace adhd {
 		spin_go_wait(0)
 	{}
 
-	ThreadedBenchmark::ThreadedBenchmark(const ThreadedBenchmark & tb):
-		threadRange(tb.threadRange),
-		allThreads(new pthread_t[tb.maxThreads()]),
-		spin_go(0)
-	{}
-
 	ThreadedBenchmark::~ThreadedBenchmark() throw() {
 		delete[] allThreads;
 	}
@@ -104,6 +98,9 @@ namespace adhd {
 		do {
 			const unsigned nthr = numThreads();
 
+			// nothing to do when no threads have to be created
+			if (0 == nthr) { continue; }
+
 			pthread_barrier_init(&init_b, NULL, nthr);
 			pthread_barrier_init(&ready_b, NULL, nthr);
 			pthread_barrier_init(&set_b, NULL, nthr);
@@ -112,7 +109,6 @@ namespace adhd {
 			pthread_barrier_init(&finish_b, NULL, nthr);
 			auto bmThreads = new BenchmarkThread[nthr];
 
-			cerr << "create " << nthr << " threads" << endl;
 			for (unsigned t = 0; t < nthr; ++t) {
 				bmThreads[t] = BenchmarkThread {t, this};
 				const int rc = pthread_create(allThreads + t, NULL, threadMain, bmThreads + t);
@@ -120,7 +116,6 @@ namespace adhd {
 				setaffinity_linux(t, allThreads[t]);
 			}
 
-			cerr << "joining threads" << endl;
 			for (unsigned t = 0; t < nthr; ++t)
 				pthread_join(allThreads[t], NULL);
 

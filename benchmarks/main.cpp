@@ -3,6 +3,7 @@
 #include "rdtsc.h"
 
 #include <iostream>
+#include <mutex>
 
 using namespace std;
 using namespace adhd;
@@ -19,8 +20,7 @@ class PhonyTimings: public Timings {
 			start(_start), stop(_stop) {}
 
 		virtual Timings * clone() const override {
-			auto temp = new PhonyTimings();
-			return temp;
+			return new PhonyTimings(*this);
 		}
 
 		virtual ostream & formatHeader(ostream & out) const override {
@@ -41,6 +41,55 @@ class PhonyTimings: public Timings {
 	private:
 		long long unsigned start;
 		long long unsigned stop;
+};
+
+class SpreadTimings: public Timings {
+	public:
+		SpreadTimings(): SpreadTimings(0, 0, 0) {}
+
+		void reset() {
+			threads = 0;
+			min = max = 0;
+		}
+
+		void addStamp(long long unsigned stamp) {
+			auto && ul = unique_lock<mutex>(mutexthis);
+			++threads;
+			if (0 == (min + max))
+				min = max = stamp;
+			else if (stamp > max)
+				max = stamp;
+			else if (stamp < min)
+				min = stamp;
+			ul.unlock();
+		}
+
+		virtual Timings * clone() const override {
+			return new SpreadTimings(threads, min, max);
+		}
+
+		virtual ostream & formatHeader(ostream & out) const override {
+			return out << "SpreadHeader" << endl;
+		}
+
+		virtual ostream & formatCSV(ostream & out) const override {
+			return out << "SpreadFields" << endl;
+		}
+
+		virtual ostream & formatHuman(ostream & out) const override {
+			return out
+				<< "threads: " << threads << " spread: " << max - min << endl;
+		}
+
+	private:
+		SpreadTimings(unsigned t, long long unsigned i, long long unsigned a)
+			: threads(t), min(i), max(a), mutexthis()
+		{}
+
+		unsigned threads;
+		long long unsigned min;
+		long long unsigned max;
+		mutex mutexthis;
 };
 
 //
@@ -69,30 +118,24 @@ class TestThreaded: public ThreadedBenchmark {
 			: ThreadedBenchmark(min, max),
 			iterations(Range<unsigned>(0, iters), Range<unsigned>(1, 2)),
 			shared(nullptr),
-			timings(nullptr),
-			startCycles(nullptr)
+			spread()
 	{}
 
-		virtual TestThreaded * clone() const override { return new TestThreaded(*this); }	
-
-		static void printPhase(unsigned threadNum, const char * str, long long unsigned start) {
-			cout << "thread " << threadNum << " - " << str << " @ " << start << endl;
+		virtual TestThreaded * clone() const override {
+			return new TestThreaded(minThreads(), maxThreads(), iterations.getMax<0>());
 		}
-		virtual void init(unsigned threadNum) final override {
-			printPhase(threadNum, "init", rdtsc());
+
+		virtual void init(unsigned) final override {
 			const unsigned nthr = numThreads();
 			shared = new unsigned[nthr];
-			timings = new PhonyTimings[nthr];
-			startCycles = new long long unsigned[nthr];
+			spread.reset();
 		}
 
 		virtual void ready(unsigned threadNum) final override {
-			printPhase(threadNum, "ready", rdtsc());
 			shared[threadNum] = threadNum;
 		}
 
 		virtual void set(unsigned threadNum) final override {
-			printPhase(threadNum, "set", rdtsc());
 			shared[threadNum] += 1;
 		}
 
@@ -100,53 +143,48 @@ class TestThreaded: public ThreadedBenchmark {
 			go_wait_start();
 			const long long unsigned start = rdtsc();
 			shared[threadNum] *= 2;
-			const long long unsigned stop = rdtsc();
 			// sync before executing non-benchmarked operations
 			go_wait_end();
-			timings[threadNum] = PhonyTimings(start, stop);
-			startCycles[threadNum] = start;
-			printPhase(threadNum, "go", start);
+			spread.addStamp(start);
 		}
 
-		virtual void finish(unsigned threadNum) final override {
-			printPhase(threadNum, "finish", rdtsc());
+		virtual void finish(unsigned) final override {
 			delete[] shared;
-			for (unsigned t = 0; t < numThreads(); ++t)
-				cout << timings[t].asHuman();
-			delete[] timings;
-			long long unsigned min = startCycles[0];
-			long long unsigned max = startCycles[0];
-			for (unsigned t = 1; t < numThreads(); ++t) {
-				const long long unsigned current = startCycles[t];
-				if (min > current) { min = current; }
-				if (max < current) { max = current; }
-			}
-			delete[] startCycles;
-			cout << "start spread: " << max - min << " cycles" << endl;
+			cout << spread.asHuman();
 		}
 
 	private:
 		// TODO: do something with these iterations :)
 		RangeSet<unsigned, unsigned> iterations;
 		unsigned * shared;
-		PhonyTimings * timings;
-		unsigned long long * startCycles;
+		SpreadTimings spread;
 };
 
-int main() {
+int main(int argc, char * argv[]) {
+	// default to 16 threads max
+	unsigned nthreads = 16;
+
+	switch (argc) {
+		case 0: // huh? :-)
+			break;
+		case 1: // no arguments
+			break;
+		default: // too many arguments
+			cerr << "NOTE: " << *argv
+				<< " ignored all but first argument" << endl;
+		case 2: // argument: expected number of threads
+			nthreads = (unsigned)atoi(argv[1]);
+			break;
+	}
+
 	timing_cb phonyCallback = [] (const Timings & timings) {
 		cout << "header: "; timings.formatHeader(cout);
 		cout << "csv: " << timings.asCSV();
 		cout << "human: " << timings.asHuman() << endl;
 	};
-	{
-		auto simple = TestSingle();
-		simple.run(phonyCallback);
-	}
-	{
-		auto * threaded = new TestThreaded(1, 10, 5);
-		threaded->run(phonyCallback);
-		delete threaded;
-	}
+
+	TestSingle().run(phonyCallback);
+	TestThreaded(0, nthreads, 5).run(phonyCallback);
+
 	return 0;
 }

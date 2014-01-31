@@ -45,7 +45,7 @@ namespace adhd {
 	class ThreadedBenchmark: public BenchmarkInterface {
 		public:
 			ThreadedBenchmark(unsigned minThreads, unsigned maxThreads);
-			ThreadedBenchmark(const ThreadedBenchmark &);
+			ThreadedBenchmark(const ThreadedBenchmark &) = delete;
 			virtual ~ThreadedBenchmark() throw();
 
 			// BenchmarkInterface
@@ -60,6 +60,7 @@ namespace adhd {
 			virtual bool equals(const RangeInterface &) const override;
 			virtual std::ostream & toOStream(std::ostream & os) const override;
 
+			// ThreadedBenchmark
 			unsigned minThreads() const;
 			unsigned maxThreads() const;
 			unsigned numThreads() const;
