@@ -48,8 +48,10 @@ class SpreadTimings: public Timings {
 		SpreadTimings(): SpreadTimings(0, 0, 0) {}
 
 		void reset() {
+			auto && ul = unique_lock<mutex>(mutexthis);
 			threads = 0;
 			min = max = 0;
+			ul.unlock();
 		}
 
 		void addStamp(long long unsigned stamp) {
@@ -178,9 +180,9 @@ int main(int argc, char * argv[]) {
 	}
 
 	timing_cb phonyCallback = [] (const Timings & timings) {
-		cout << "header: "; timings.formatHeader(cout);
-		cout << "csv: " << timings.asCSV();
-		cout << "human: " << timings.asHuman() << endl;
+		cout << "header: " << endl; timings.formatHeader(cout);
+		cout << endl << "csv: " << endl << timings.asCSV();
+		cout << endl << "human: " << endl << timings.asHuman() << endl;
 	};
 
 	TestSingle().run(phonyCallback);
