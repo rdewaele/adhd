@@ -180,7 +180,7 @@ namespace adhd {
 	void ThreadedBenchmark::runThread(unsigned threadNum) {
 		//for (;;) {
 			//cerr << "thread " << threadNum << " waiting" << endl;
-			//pthread_barrier_wait(&runThreads_b);
+			pthread_barrier_wait(&runThreads_b);
 			//if (stopThreads) { return; }
 
 			{ // init

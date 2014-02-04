@@ -155,6 +155,11 @@ class TestThreaded: public ThreadedBenchmark {
 			cout << spread.asHuman();
 		}
 
+		virtual void setUp() final override {
+			ThreadedBenchmark::setUp();
+			runThreads();
+		}
+
 	private:
 		// TODO: do something with these iterations :)
 		RangeSet<unsigned, unsigned> iterations;
