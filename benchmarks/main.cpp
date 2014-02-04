@@ -100,11 +100,11 @@ class SpreadTimings: public Timings {
 
 class TestSingle: public SingleBenchmark {
 	public:
-		virtual void runSingle(timing_cb tcb) const final override {
+		virtual void runSingle() final override {
 			long long unsigned start = rdtsc();
 			cout << "I am Simple!" << endl;
 			long long unsigned stop = rdtsc();
-			tcb(PhonyTimings(start, stop));
+			cout << PhonyTimings(start, stop).asHuman() << endl;
 		}
 
 		virtual TestSingle * clone() const override { return new TestSingle(); }
@@ -179,14 +179,21 @@ int main(int argc, char * argv[]) {
 			break;
 	}
 
-	timing_cb phonyCallback = [] (const Timings & timings) {
-		cout << "header: " << endl; timings.formatHeader(cout);
-		cout << endl << "csv: " << endl << timings.asCSV();
-		cout << endl << "human: " << endl << timings.asHuman() << endl;
-	};
+	{ // single run
+		auto && ts = TestSingle();
+		cout << "TestSingle range-based for:" << endl;
+		for (auto & tmp: ts) { cout << tmp << endl; }
+		cout << "TestSingle run:" << endl;
+		ts.run();
+	}
 
-	TestSingle().run(phonyCallback);
-	TestThreaded(0, nthreads, 5).run(phonyCallback);
+	{ // threaded
+		auto && tt = TestThreaded(0, nthreads, 5);
+		cout << "TestThreaded range-based for:" << endl;
+		for (auto & tmp: tt) { cout << tmp << endl; }
+		cout << endl << "TestThreaded run:" << endl;
+		tt.run();
+	}
 
 	return 0;
 }

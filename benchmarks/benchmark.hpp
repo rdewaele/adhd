@@ -13,19 +13,22 @@ namespace adhd {
 
 	class BenchmarkInterface: public virtual RangeInterface {
 		public:
-			virtual void run(timing_cb tcb) = 0;
+			void run() {
+				do {
+					setUp();
+					tearDown();
+				} while (!atMax() && (next(), true));
+			}
+
+		protected:
+			virtual void setUp() = 0;
+			virtual void tearDown() = 0;
 	};
 
 	// One-shot benchmark: no variants
 	class SingleBenchmark: public BenchmarkInterface {
 		public:
 			SingleBenchmark();
-
-			// RangeInterface
-			virtual std::ostream & toOStream(std::ostream & os) const override;
-
-			// BenchmarkInterface
-			virtual void run(timing_cb) final override;
 
 			// RangeInterface
 			virtual void next() final override;
@@ -35,8 +38,14 @@ namespace adhd {
 			virtual void gotoEnd() final override;
 			virtual bool equals(const RangeInterface &) const final override;
 
+			virtual std::ostream & toOStream(std::ostream & os) const override;
+
+			// BenchmarkInterface
+			virtual void setUp() final override;
+			virtual void tearDown() final override;
+
 		protected:
-			virtual void runSingle(timing_cb) const = 0;
+			virtual void runSingle() = 0;
 
 		private:
 			bool reset;
@@ -46,9 +55,6 @@ namespace adhd {
 		public:
 			ThreadedBenchmark(unsigned minThreads, unsigned maxThreads);
 			ThreadedBenchmark(const ThreadedBenchmark &) = delete;
-
-			// BenchmarkInterface
-			virtual void run(timing_cb tcb) final override;
 
 			// RangeInterface
 			virtual void next() override;
@@ -64,7 +70,22 @@ namespace adhd {
 			unsigned maxThreads() const;
 			unsigned numThreads() const;
 
+			// allow the plain old C function passed to pthread_create to invoke the
+			// benchmark, supplying some extra thread-unique parameters as argument
+			struct BenchmarkThread {
+				unsigned threadNum;
+				ThreadedBenchmark * benchmark;
+				inline void runThread() { benchmark->runThread(threadNum); }
+			};
+
 		protected:
+			// ThreadedBenchmark's threads will spawn once, and execute the
+			// init/ready/set/go/finish methods when runThreads() is called.
+			void runThreads();
+
+			void setUp() override;
+			void tearDown() override;
+
 			// placeholders: no pure virtual methods to allow children to override no
 			// more methods than they need
 			virtual void init(unsigned threadNum);
@@ -84,12 +105,16 @@ namespace adhd {
 
 		private:
 			void runThread(unsigned threadNum);
-			void init_barriers(const unsigned nthr);
+			void init_barriers();
 			void destroy_barriers();
 
-			friend struct BenchmarkThread;
+			std::vector<pthread_t> pthreadIDs;
+			std::vector<BenchmarkThread> bmThreads;
 
 			Range<unsigned> threadRange;
+
+			pthread_barrier_t runThreads_b;
+			//bool stopThreads;
 
 			std::atomic_uint spin_go;
 			std::atomic_uint spin_go_wait;

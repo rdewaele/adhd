@@ -15,14 +15,12 @@ namespace adhd {
 	 */
 	SingleBenchmark::SingleBenchmark(): reset(false) {}
 
-	ostream & SingleBenchmark::toOStream(ostream & os) const {
-		return os << "SingleBenchmark instance" << endl;
-	}
+	void SingleBenchmark::setUp() { runSingle(); }
+	void SingleBenchmark::tearDown() {}
 
-	void SingleBenchmark::run(timing_cb cb) { runSingle(cb); }
 	void SingleBenchmark::next() { reset = !reset; }
-	bool SingleBenchmark::atMin() const { return !reset; }
-	bool SingleBenchmark::atMax() const { return reset; }
+	bool SingleBenchmark::atMin() const { return true; }
+	bool SingleBenchmark::atMax() const { return true; }
 	void SingleBenchmark::gotoBegin() { reset = false; }
 	void SingleBenchmark::gotoEnd() { reset = true; }
 	bool SingleBenchmark::equals(const RangeInterface & ri) const {
@@ -30,28 +28,27 @@ namespace adhd {
 		return reset == sb.reset;
 	}
 
+	ostream & SingleBenchmark::toOStream(ostream & os) const {
+		return os << "SingleBenchmark instance (" << reset << ")" << endl;
+	}
+
 	/*
 	 * ThreadedBenchmark
 	 */
-
-	// allow the plain old C function passed to pthread_create to invoke the
-	// benchmark, supplying some extra thread-unique parameters as argument
-	struct BenchmarkThread {
-		unsigned threadNum;
-		ThreadedBenchmark * benchmark;
-		inline void runThread() { benchmark->runThread(threadNum); }
-	};
 
 	// main thread function that will be passed to pthread_create, as method
 	// pointers can (should/must) not be used; qualifying the function as
 	// extern "C" maximises portability
 	extern "C" {
-		static void c_thread_main(BenchmarkThread * bt) { bt->runThread(); }
+		static void c_thread_main(ThreadedBenchmark::BenchmarkThread * bt) { bt->runThread(); }
 	}
 	static auto threadMain = reinterpret_cast<void * (*)(void *)>(c_thread_main);
 
 	ThreadedBenchmark::ThreadedBenchmark(unsigned min, unsigned max):
+		pthreadIDs(max),
+		bmThreads(max),
 		threadRange(min, max),
+		//stopThreads(false),
 		spin_go(0),
 		spin_go_wait(0)
 	{}
@@ -85,7 +82,11 @@ namespace adhd {
 		}
 	}
 
-	void ThreadedBenchmark::init_barriers(const unsigned nthr) {
+	void ThreadedBenchmark::init_barriers() {
+		const unsigned nthr = numThreads();
+
+		pthread_barrier_init(&runThreads_b, NULL, nthr + 1);
+
 		pthread_barrier_init(&init_b, NULL, nthr);
 		pthread_barrier_init(&ready_b, NULL, nthr);
 		pthread_barrier_init(&set_b, NULL, nthr);
@@ -95,6 +96,8 @@ namespace adhd {
 	}
 
 	void ThreadedBenchmark::destroy_barriers() {
+		pthread_barrier_destroy(&runThreads_b);
+
 		pthread_barrier_destroy(&init_b);
 		pthread_barrier_destroy(&ready_b);
 		pthread_barrier_destroy(&set_b);
@@ -103,29 +106,28 @@ namespace adhd {
 		pthread_barrier_destroy(&finish_b);
 	}
 
-	void ThreadedBenchmark::run(timing_cb tcb) {
-		do {
-			const unsigned nthr = numThreads();
+	void ThreadedBenchmark::setUp() {
+		const unsigned nthr = numThreads();
+		if (0 == nthr) { return; }
 
-			// nothing to do when no threads have to be created
-			if (0 == nthr) { continue; }
+		init_barriers();
 
-			vector<pthread_t> pthreadIDs(nthr);
-			vector<BenchmarkThread> bmThreads(nthr);
-			init_barriers(nthr);
+		for (unsigned t = 0; t < nthr; ++t) {
+			bmThreads[t] = BenchmarkThread {t, this};
+			const int rc = pthread_create(&pthreadIDs[t], NULL, threadMain, &bmThreads[t]);
+			if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
+			setaffinity_linux(t, pthreadIDs[t]);
+		}
+	}
 
-			for (unsigned t = 0; t < nthr; ++t) {
-				bmThreads[t] = BenchmarkThread {t, this};
-				const int rc = pthread_create(&pthreadIDs[t], NULL, threadMain, &bmThreads[t]);
-				if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
-				setaffinity_linux(t, pthreadIDs[t]);
-			}
+	void ThreadedBenchmark::tearDown() {
+		const unsigned nthr = numThreads();
+		if (0 == nthr) { return; }
 
-			for (unsigned t = 0; t < nthr; ++t)
-				pthread_join(pthreadIDs[t], NULL);
+		for (unsigned t = 0; t < nthr; ++t)
+			pthread_join(pthreadIDs[t], NULL);
 
-			destroy_barriers();
-		} while (!atMax() && (next(), true));
+		destroy_barriers();
 	}
 
 	void ThreadedBenchmark::next() {
@@ -170,30 +172,42 @@ namespace adhd {
 		return threadRange.getValue();
 	}
 
+	void ThreadedBenchmark::runThreads() {
+		if (numThreads() > 0)
+			pthread_barrier_wait(&runThreads_b);
+	}
+
 	void ThreadedBenchmark::runThread(unsigned threadNum) {
-		{ // init
-			const int isSerial = pthread_barrier_wait(&init_b);
-			if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial) {
-				spin_go = numThreads();
-				spin_go_wait = numThreads();
-				init(threadNum);
-			} }
-		{ // ready
-			pthread_barrier_wait(&ready_b);
-			ready(threadNum); }
-		{ // set
-			pthread_barrier_wait(&set_b);
-			set(threadNum); }
-		{ // go - always spin to keep calling go_wait_start() optional while
-			// maintaining starting time spread as small as possible
-			pthread_barrier_wait(&go_b);
-			--spin_go;
-			while(spin_go);
-			go(threadNum); }
-		{ // finish
-			const int isSerial = pthread_barrier_wait(&finish_b);
-			if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial)
-				finish(threadNum); }
+		//for (;;) {
+			//cerr << "thread " << threadNum << " waiting" << endl;
+			//pthread_barrier_wait(&runThreads_b);
+			//if (stopThreads) { return; }
+
+			{ // init
+				const int isSerial = pthread_barrier_wait(&init_b);
+				if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial) {
+					spin_go = numThreads();
+					spin_go_wait = numThreads();
+					init(threadNum);
+				} }
+			{ // ready
+				pthread_barrier_wait(&ready_b);
+				ready(threadNum); }
+			{ // set
+				pthread_barrier_wait(&set_b);
+				set(threadNum); }
+			{ // go - always spin to keep calling go_wait_start() optional while
+				// maintaining starting time spread as small as possible
+				pthread_barrier_wait(&go_b);
+				--spin_go;
+				while(spin_go);
+				go(threadNum); }
+			{ // finish
+				const int isSerial = pthread_barrier_wait(&finish_b);
+				if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial)
+					finish(threadNum); }
+			//break;
+		//}
 	}
 
 	// placeholders: no pure virtual methods to allow children to override no
