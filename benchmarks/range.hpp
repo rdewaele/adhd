@@ -1,7 +1,6 @@
 #include <iostream>
 #include <iterator>
 #include <memory>
-#include <stdexcept>
 #include <tuple>
 
 namespace adhd {
@@ -81,10 +80,9 @@ namespace adhd {
 				typedef T type;
 
 				Range(T constant): Range(constant, constant) {}
-				Range(T _min, T _max): Range(_min, _max, false) {
-					if (min > max)
-						throw std::logic_error("minimal value can not exceed maximal value");
-				}
+				Range(T _min, T _max)
+					: Range(_min < _max ? _min : _max, _min < _max ? _max : _min, false)
+					{}
 
 				virtual Range * clone() const override { return new Range(*this); }
 
