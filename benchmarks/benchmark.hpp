@@ -90,7 +90,6 @@ namespace adhd {
 			friend struct BenchmarkThread;
 
 			Range<unsigned> threadRange;
-			std::vector<ThreadedTimings *> allTimings;
 
 			std::atomic_uint spin_go;
 			std::atomic_uint spin_go_wait;
