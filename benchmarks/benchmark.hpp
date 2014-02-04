@@ -7,13 +7,13 @@
 #include <atomic>
 #include <iterator>
 #include <pthread.h>
+#include <vector>
 
 namespace adhd {
 
 	class BenchmarkInterface: public virtual RangeInterface {
 		public:
 			virtual void run(timing_cb tcb) = 0;
-			virtual ~BenchmarkInterface() throw() = default;
 	};
 
 	// One-shot benchmark: no variants
@@ -46,7 +46,6 @@ namespace adhd {
 		public:
 			ThreadedBenchmark(unsigned minThreads, unsigned maxThreads);
 			ThreadedBenchmark(const ThreadedBenchmark &) = delete;
-			virtual ~ThreadedBenchmark() throw();
 
 			// BenchmarkInterface
 			virtual void run(timing_cb tcb) final override;
@@ -84,12 +83,14 @@ namespace adhd {
 			inline void go_wait_end() { pthread_barrier_wait(&go_wait_b); }
 
 		private:
-			void * runThread(unsigned threadNum);
+			void runThread(unsigned threadNum);
+			void init_barriers(const unsigned nthr);
+			void destroy_barriers();
 
 			friend struct BenchmarkThread;
 
 			Range<unsigned> threadRange;
-			pthread_t * allThreads;
+			std::vector<ThreadedTimings *> allTimings;
 
 			std::atomic_uint spin_go;
 			std::atomic_uint spin_go_wait;

@@ -19,9 +19,9 @@ class PhonyTimings: public Timings {
 		PhonyTimings(long long unsigned _start, long long unsigned _stop):
 			start(_start), stop(_stop) {}
 
-		virtual Timings * clone() const override {
-			return new PhonyTimings(*this);
-		}
+		//virtual Timings * clone() const override {
+		//	return new PhonyTimings(*this);
+		//}
 
 		virtual ostream & formatHeader(ostream & out) const override {
 			return out << "PhonyHeader" << endl;
@@ -66,9 +66,9 @@ class SpreadTimings: public Timings {
 			ul.unlock();
 		}
 
-		virtual Timings * clone() const override {
-			return new SpreadTimings(threads, min, max);
-		}
+		//virtual Timings * clone() const override {
+		//	return new SpreadTimings(threads, min, max);
+		//}
 
 		virtual ostream & formatHeader(ostream & out) const override {
 			return out << "SpreadHeader" << endl;

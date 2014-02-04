@@ -10,7 +10,7 @@ namespace adhd {
 	class Timings: public prettyprint::CSV, public prettyprint::Human {
 		public:
 			virtual ~Timings() = default;
-			virtual Timings * clone() const = 0;
+			//virtual Timings * clone() const = 0;
 			virtual std::ostream & formatHeader(std::ostream & out) const override = 0;
 			virtual std::ostream & formatCSV(std::ostream & out) const override = 0;
 			virtual std::ostream & formatHuman(std::ostream & out) const override = 0;

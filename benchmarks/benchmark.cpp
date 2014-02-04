@@ -39,31 +39,22 @@ namespace adhd {
 	struct BenchmarkThread {
 		unsigned threadNum;
 		ThreadedBenchmark * benchmark;
-		inline void * runThread() {
-			return benchmark->runThread(threadNum);
-		}
+		inline void runThread() { benchmark->runThread(threadNum); }
 	};
 
 	// main thread function that will be passed to pthread_create, as method
 	// pointers can (should/must) not be used; qualifying the function as
 	// extern "C" maximises portability
 	extern "C" {
-		static void * c_thread_main(BenchmarkThread * bt) {
-			return bt->runThread();
-		}
+		static void c_thread_main(BenchmarkThread * bt) { bt->runThread(); }
 	}
 	static auto threadMain = reinterpret_cast<void * (*)(void *)>(c_thread_main);
 
 	ThreadedBenchmark::ThreadedBenchmark(unsigned min, unsigned max):
 		threadRange(min, max),
-		allThreads(new pthread_t[max]),
 		spin_go(0),
 		spin_go_wait(0)
 	{}
-
-	ThreadedBenchmark::~ThreadedBenchmark() throw() {
-		delete[] allThreads;
-	}
 
 	// linux-specific way of setting thread affinity
 	static inline void setaffinity_linux(const unsigned tnum, const pthread_t & thread) {
@@ -94,6 +85,24 @@ namespace adhd {
 		}
 	}
 
+	void ThreadedBenchmark::init_barriers(const unsigned nthr) {
+		pthread_barrier_init(&init_b, NULL, nthr);
+		pthread_barrier_init(&ready_b, NULL, nthr);
+		pthread_barrier_init(&set_b, NULL, nthr);
+		pthread_barrier_init(&go_b, NULL, nthr);
+		pthread_barrier_init(&go_wait_b, NULL, nthr);
+		pthread_barrier_init(&finish_b, NULL, nthr);
+	}
+
+	void ThreadedBenchmark::destroy_barriers() {
+		pthread_barrier_destroy(&init_b);
+		pthread_barrier_destroy(&ready_b);
+		pthread_barrier_destroy(&set_b);
+		pthread_barrier_destroy(&go_b);
+		pthread_barrier_destroy(&go_wait_b);
+		pthread_barrier_destroy(&finish_b);
+	}
+
 	void ThreadedBenchmark::run(timing_cb tcb) {
 		do {
 			const unsigned nthr = numThreads();
@@ -101,30 +110,21 @@ namespace adhd {
 			// nothing to do when no threads have to be created
 			if (0 == nthr) { continue; }
 
-			pthread_barrier_init(&init_b, NULL, nthr);
-			pthread_barrier_init(&ready_b, NULL, nthr);
-			pthread_barrier_init(&set_b, NULL, nthr);
-			pthread_barrier_init(&go_b, NULL, nthr);
-			pthread_barrier_init(&go_wait_b, NULL, nthr);
-			pthread_barrier_init(&finish_b, NULL, nthr);
-			auto bmThreads = new BenchmarkThread[nthr];
+			vector<pthread_t> pthreadIDs(nthr);
+			vector<BenchmarkThread> bmThreads(nthr);
+			init_barriers(nthr);
 
 			for (unsigned t = 0; t < nthr; ++t) {
 				bmThreads[t] = BenchmarkThread {t, this};
-				const int rc = pthread_create(allThreads + t, NULL, threadMain, bmThreads + t);
+				const int rc = pthread_create(&pthreadIDs[t], NULL, threadMain, &bmThreads[t]);
 				if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
-				setaffinity_linux(t, allThreads[t]);
+				setaffinity_linux(t, pthreadIDs[t]);
 			}
 
 			for (unsigned t = 0; t < nthr; ++t)
-				pthread_join(allThreads[t], NULL);
+				pthread_join(pthreadIDs[t], NULL);
 
-			pthread_barrier_destroy(&init_b);
-			pthread_barrier_destroy(&ready_b);
-			pthread_barrier_destroy(&set_b);
-			pthread_barrier_destroy(&go_wait_b);
-			pthread_barrier_destroy(&finish_b);
-			delete[] bmThreads;
+			destroy_barriers();
 		} while (!atMax() && (next(), true));
 	}
 
@@ -170,7 +170,7 @@ namespace adhd {
 		return threadRange.getValue();
 	}
 
-	void * ThreadedBenchmark::runThread(unsigned threadNum) {
+	void ThreadedBenchmark::runThread(unsigned threadNum) {
 		{ // init
 			const int isSerial = pthread_barrier_wait(&init_b);
 			if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial) {
@@ -194,7 +194,6 @@ namespace adhd {
 			const int isSerial = pthread_barrier_wait(&finish_b);
 			if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial)
 				finish(threadNum); }
-		return NULL;
 	}
 
 	// placeholders: no pure virtual methods to allow children to override no
