@@ -34,13 +34,13 @@ namespace adhd {
 			};
 
 			iterator begin() const {
-				iterator && tmp(*this);
+				iterator tmp(*this);
 				tmp->gotoBegin();
 				return tmp;
 			}
 
 			iterator end() const {
-				iterator && tmp(*this);
+				iterator tmp(*this);
 				tmp->gotoEnd();
 				return tmp;
 			}
