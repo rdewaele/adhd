@@ -67,7 +67,9 @@ namespace adhd {
 				return ri.toOStream(os);
 			}
 
-			virtual ~RangeInterface() = default;
+			// XXX '= default' seems nicer, but icpc rejects this with error #809
+			// when the destructor is overridden
+			virtual ~RangeInterface() {};
 	};
 
 	// Range with overflow semantics: when current value would reach or surpass
