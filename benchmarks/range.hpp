@@ -2,6 +2,7 @@
 #include <iterator>
 #include <memory>
 #include <tuple>
+#include <type_traits>
 
 namespace adhd {
 	// General interface for range types. Ranges have a lower and an upper bound,
@@ -10,40 +11,29 @@ namespace adhd {
 	// incremented, the current value should reset to min.
 	class RangeInterface {
 		public:
-			class iterator: public std::iterator<std::input_iterator_tag, RangeInterface> {
-				public:
-					typedef std::unique_ptr<RangeInterface> ptr_ri;
+			template <typename W>
+				class iterator: public std::iterator<std::input_iterator_tag, W> {
+					public:
+					typedef std::unique_ptr<W> ptr_ri;
 
-					iterator(const RangeInterface & ri): ptr(ri.clone()) {}
+					iterator(const W & ri): ptr(ri.clone()) {}
 					iterator(ptr_ri & _ptr) { ptr.swap(_ptr); }
-					iterator(const iterator & i): iterator(*i) {}
+					iterator(const iterator & i): iterator(*(i.ptr)) {}
 
 					iterator & operator++() { ptr->next(); return *this; }
-					const RangeInterface & operator*() const { return **ptr; }
+					W & operator*() { return *(ptr.get()); }
 
 					bool operator==(const iterator & rhs) const { return ptr->equals(*(rhs.ptr)); }
 					bool operator!=(const iterator & rhs) const { return !(ptr->equals(*(rhs.ptr))); }
-					RangeInterface * operator->() { return ptr.get(); }
+					W * operator->() { return ptr.get(); }
 
 					friend inline std::ostream & operator<<(std::ostream & os, const iterator & up) {
 						return up.ptr->toOStream(os);
 					}
 
-				private:
+					private:
 					ptr_ri ptr;
-			};
-
-			iterator begin() const {
-				iterator tmp(*this);
-				tmp->gotoBegin();
-				return tmp;
-			}
-
-			iterator end() const {
-				iterator tmp(*this);
-				tmp->gotoEnd();
-				return tmp;
-			}
+				};
 
 			virtual void gotoBegin() = 0;
 			virtual void gotoEnd() = 0;
@@ -71,6 +61,30 @@ namespace adhd {
 			// when the destructor is overridden
 			virtual ~RangeInterface() {};
 	};
+
+	template <typename W>
+		RangeInterface::iterator<W> begin(const W & p) {
+			RangeInterface::iterator<W> tmp(p);
+			tmp->gotoBegin();
+			return tmp;
+		}
+
+	template <typename W>
+		RangeInterface::iterator<W> end(const W & p) {
+			RangeInterface::iterator<W> tmp(p);
+			tmp->gotoEnd();
+			return tmp;
+		}
+
+	template <typename W>
+		RangeInterface::iterator<W> begin(const W * p) {
+			return begin(*p);
+		}
+
+	template <typename W>
+		RangeInterface::iterator<W> end(const W * p) {
+			return end(*p);
+		}
 
 	// Range with overflow semantics: when current value would reach or surpass
 	// max, it resets to the min value instead.
