@@ -52,7 +52,6 @@ namespace adhd {
 	{
 		if (min < 1 || max < 1)
 			throw invalid_argument("ThreadedBenchmark(): number of threads must be >= 1");
-		spawnThreads();
 	}
 
 	// clean up threads when class gets destructed (hide implementation detail)
@@ -118,37 +117,32 @@ namespace adhd {
 	}
 
 	void ThreadedBenchmark::run() {
-		// start active threads
+		// start active threads and block until all threads finished executing
+		// their init/ready/set/go/finish routine
+		spawnThreads();
 		startWaitingThreads(&runThreads_entry_b);
-
-		// note: actual running code is defined by the
-		// init/ready/set/go/finish methods
-
-		// block until all threads finished executing
 		startWaitingThreads(&runThreads_exit_b);
 	}
 
 	void ThreadedBenchmark::spawnThreads() {
 		const unsigned nthr = numThreads();
 
-		if(threadsRunning)
-			throw std::logic_error("spawning while still running");
-
-		threadsRunning = true;
-		init_barriers();
-
-		for (unsigned t = 0; t < nthr; ++t) {
-			bmThreads[t] = BenchmarkThread {t, this};
-			const int rc = pthread_create(&pthreadIDs[t], NULL, threadMain, &bmThreads[t]);
-			if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
-			setaffinity_linux(t, pthreadIDs[t]);
+		if(!threadsRunning) {
+			init_barriers();
+			for (unsigned t = 0; t < nthr; ++t) {
+				bmThreads[t] = BenchmarkThread {t, this};
+				const int rc = pthread_create(&pthreadIDs[t], NULL, threadMain, &bmThreads[t]);
+				if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
+				setaffinity_linux(t, pthreadIDs[t]);
+			}
+			threadsRunning = true;
 		}
 	}
 
 	void ThreadedBenchmark::joinThreads() {
 		const unsigned nthr = numThreads();
 
-		if (threadsRunning) { // cleanup
+		if (threadsRunning) {
 			stopThreads = true;
 			startWaitingThreads(&runThreads_entry_b);
 
@@ -163,7 +157,6 @@ namespace adhd {
 	void ThreadedBenchmark::next() {
 		joinThreads();
 		threadRange.next();
-		spawnThreads();
 	}
 	
 	bool ThreadedBenchmark::atMin() const {
