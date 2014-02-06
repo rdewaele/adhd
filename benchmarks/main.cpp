@@ -155,6 +155,14 @@ class TestThreaded: public ThreadedBenchmark {
 			cout << spread.asHuman();
 		}
 
+#if 1
+		// regular loop nesting
+		virtual void next() final override {
+			iterations.next();
+			if (iterations.atMin())
+				ThreadedBenchmark::next();
+		}
+#else
 		// loop inversion as proof of concept
 		// (slower because more threads are being created in total)
 		virtual void next() final override {
@@ -162,6 +170,7 @@ class TestThreaded: public ThreadedBenchmark {
 			if (ThreadedBenchmark::atMin())
 				iterations.next();
 		}
+#endif
 
 		virtual bool atMax() const final override {
 			return ThreadedBenchmark::atMax() && iterations.atMax();
