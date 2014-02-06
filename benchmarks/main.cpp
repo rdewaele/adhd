@@ -100,7 +100,7 @@ class SpreadTimings: public Timings {
 
 class TestSingle: public SingleBenchmark {
 	public:
-		virtual void runSingle() final override {
+		virtual void run() final override {
 			long long unsigned start = rdtsc();
 			cout << "I am Simple!" << endl;
 			long long unsigned stop = rdtsc();
@@ -155,13 +155,44 @@ class TestThreaded: public ThreadedBenchmark {
 			cout << spread.asHuman();
 		}
 
-		virtual void setUp() final override {
-			ThreadedBenchmark::setUp();
-			runThreads();
+		// loop inversion as proof of concept
+		// (slower because more threads are being created in total)
+		virtual void next() final override {
+			ThreadedBenchmark::next();
+			if (ThreadedBenchmark::atMin())
+				iterations.next();
+		}
+
+		virtual bool atMax() const final override {
+			return ThreadedBenchmark::atMax() && iterations.atMax();
+		}
+
+		virtual bool atMin() const final override {
+			return ThreadedBenchmark::atMin() && iterations.atMin();
+		}
+
+		virtual void gotoBegin() final override {
+			ThreadedBenchmark::gotoBegin();
+			iterations.gotoBegin();
+		}
+
+		virtual void gotoEnd() final override {
+			ThreadedBenchmark::gotoEnd();
+			iterations.gotoEnd();
+		}
+
+		virtual bool equals(const RangeInterface & ri) const final override {
+			const TestThreaded & tmp = dynamic_cast<const TestThreaded &>(ri);
+			return ThreadedBenchmark::equals(ri) && iterations.equals(tmp.iterations);
+		}
+
+		virtual ostream & toOStream(ostream & os) const final override {
+			ThreadedBenchmark::toOStream(os);
+			os << " | TestThreaded: ";
+			return iterations.toOStream(os);
 		}
 
 	private:
-		// TODO: do something with these iterations :)
 		RangeSet<unsigned, unsigned> iterations;
 		unsigned * shared;
 		SpreadTimings spread;
@@ -189,15 +220,15 @@ int main(int argc, char * argv[]) {
 		cout << "TestSingle range-based for:" << endl;
 		for (auto & tmp: ts) { cout << tmp << endl; }
 		cout << "TestSingle run:" << endl;
-		ts.run();
+		ts.runAll();
 	}
 
 	{ // threaded
-		auto && tt = TestThreaded(0, nthreads, 5);
+		auto && tt = TestThreaded(1, nthreads, 1);
 		cout << "TestThreaded range-based for:" << endl;
 		for (auto & tmp: tt) { cout << tmp << endl; }
 		cout << endl << "TestThreaded run:" << endl;
-		tt.run();
+		tt.runAll();
 	}
 
 	return 0;

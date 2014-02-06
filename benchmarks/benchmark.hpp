@@ -13,16 +13,18 @@ namespace adhd {
 
 	class BenchmarkInterface: public virtual RangeInterface {
 		public:
-			void run() {
-				do {
-					setUp();
-					tearDown();
-				} while (!atMax() && (next(), true));
+			// BenchmarkInterface
+			virtual void run() = 0;
+
+			void runAll() {
+				for (auto & tmp: *this)
+					tmp.run();
 			}
 
-		protected:
-			virtual void setUp() = 0;
-			virtual void tearDown() = 0;
+			// RangeInterface
+			// overload return type to enable range-based loops for
+			// BenchmarkInterfaces specifically
+			virtual BenchmarkInterface * clone() const = 0;
 	};
 
 	// One-shot benchmark: no variants
@@ -40,13 +42,6 @@ namespace adhd {
 
 			virtual std::ostream & toOStream(std::ostream & os) const override;
 
-			// BenchmarkInterface
-			virtual void setUp() final override;
-			virtual void tearDown() final override;
-
-		protected:
-			virtual void runSingle() = 0;
-
 		private:
 			bool reset;
 	};
@@ -55,6 +50,7 @@ namespace adhd {
 		public:
 			ThreadedBenchmark(unsigned minThreads, unsigned maxThreads);
 			ThreadedBenchmark(const ThreadedBenchmark &) = delete;
+			virtual ~ThreadedBenchmark();
 
 			// RangeInterface
 			virtual void next() override;
@@ -64,6 +60,9 @@ namespace adhd {
 			virtual void gotoEnd() override;
 			virtual bool equals(const RangeInterface &) const override;
 			virtual std::ostream & toOStream(std::ostream & os) const override;
+
+			// BenchmarkInterface
+			virtual void run() override;
 
 			// ThreadedBenchmark
 			unsigned minThreads() const;
@@ -79,13 +78,6 @@ namespace adhd {
 			};
 
 		protected:
-			// ThreadedBenchmark's threads will spawn once, and execute the
-			// init/ready/set/go/finish methods when runThreads() is called.
-			void runThreads();
-
-			void setUp() override;
-			void tearDown() override;
-
 			// placeholders: no pure virtual methods to allow children to override no
 			// more methods than they need
 			virtual void init(unsigned threadNum);
@@ -108,13 +100,18 @@ namespace adhd {
 			void init_barriers();
 			void destroy_barriers();
 
+			void spawnThreads();
+			void joinThreads();
+
 			std::vector<pthread_t> pthreadIDs;
 			std::vector<BenchmarkThread> bmThreads;
 
 			Range<unsigned> threadRange;
 
-			pthread_barrier_t runThreads_b;
-			//bool stopThreads;
+			pthread_barrier_t runThreads_entry_b;
+			pthread_barrier_t runThreads_exit_b;
+			bool stopThreads;
+			bool threadsRunning;
 
 			std::atomic_uint spin_go;
 			std::atomic_uint spin_go_wait;

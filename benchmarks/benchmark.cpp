@@ -15,9 +15,6 @@ namespace adhd {
 	 */
 	SingleBenchmark::SingleBenchmark(): reset(false) {}
 
-	void SingleBenchmark::setUp() { runSingle(); }
-	void SingleBenchmark::tearDown() {}
-
 	void SingleBenchmark::next() { reset = !reset; }
 	bool SingleBenchmark::atMin() const { return true; }
 	bool SingleBenchmark::atMax() const { return true; }
@@ -48,10 +45,18 @@ namespace adhd {
 		pthreadIDs(max),
 		bmThreads(max),
 		threadRange(min, max),
-		//stopThreads(false),
+		stopThreads(false),
+		threadsRunning(false),
 		spin_go(0),
 		spin_go_wait(0)
-	{}
+	{
+		if (min < 1 || max < 1)
+			throw invalid_argument("ThreadedBenchmark(): number of threads must be >= 1");
+		spawnThreads();
+	}
+
+	// clean up threads when class gets destructed (hide implementation detail)
+	ThreadedBenchmark::~ThreadedBenchmark() { joinThreads(); }
 
 	// linux-specific way of setting thread affinity
 	static inline void setaffinity_linux(const unsigned tnum, const pthread_t & thread) {
@@ -85,7 +90,8 @@ namespace adhd {
 	void ThreadedBenchmark::init_barriers() {
 		const unsigned nthr = numThreads();
 
-		pthread_barrier_init(&runThreads_b, NULL, nthr + 1);
+		pthread_barrier_init(&runThreads_entry_b, NULL, nthr + 1);
+		pthread_barrier_init(&runThreads_exit_b, NULL, nthr + 1);
 
 		pthread_barrier_init(&init_b, NULL, nthr);
 		pthread_barrier_init(&ready_b, NULL, nthr);
@@ -96,7 +102,8 @@ namespace adhd {
 	}
 
 	void ThreadedBenchmark::destroy_barriers() {
-		pthread_barrier_destroy(&runThreads_b);
+		pthread_barrier_destroy(&runThreads_entry_b);
+		pthread_barrier_destroy(&runThreads_exit_b);
 
 		pthread_barrier_destroy(&init_b);
 		pthread_barrier_destroy(&ready_b);
@@ -106,10 +113,28 @@ namespace adhd {
 		pthread_barrier_destroy(&finish_b);
 	}
 
-	void ThreadedBenchmark::setUp() {
-		const unsigned nthr = numThreads();
-		if (0 == nthr) { return; }
+	inline void startWaitingThreads(pthread_barrier_t * b) {
+		pthread_barrier_wait(b);
+	}
 
+	void ThreadedBenchmark::run() {
+		// start active threads
+		startWaitingThreads(&runThreads_entry_b);
+
+		// note: actual running code is defined by the
+		// init/ready/set/go/finish methods
+
+		// block until all threads finished executing
+		startWaitingThreads(&runThreads_exit_b);
+	}
+
+	void ThreadedBenchmark::spawnThreads() {
+		const unsigned nthr = numThreads();
+
+		if(threadsRunning)
+			throw std::logic_error("spawning while still running");
+
+		threadsRunning = true;
 		init_barriers();
 
 		for (unsigned t = 0; t < nthr; ++t) {
@@ -120,18 +145,25 @@ namespace adhd {
 		}
 	}
 
-	void ThreadedBenchmark::tearDown() {
+	void ThreadedBenchmark::joinThreads() {
 		const unsigned nthr = numThreads();
-		if (0 == nthr) { return; }
 
-		for (unsigned t = 0; t < nthr; ++t)
-			pthread_join(pthreadIDs[t], NULL);
+		if (threadsRunning) { // cleanup
+			stopThreads = true;
+			startWaitingThreads(&runThreads_entry_b);
 
-		destroy_barriers();
+			for (unsigned t = 0; t < nthr; ++t)
+				pthread_join(pthreadIDs[t], NULL);
+			destroy_barriers();
+			stopThreads = false;
+			threadsRunning = false;
+		} 
 	}
 
 	void ThreadedBenchmark::next() {
+		joinThreads();
 		threadRange.next();
+		spawnThreads();
 	}
 	
 	bool ThreadedBenchmark::atMin() const {
@@ -172,16 +204,10 @@ namespace adhd {
 		return threadRange.getValue();
 	}
 
-	void ThreadedBenchmark::runThreads() {
-		if (numThreads() > 0)
-			pthread_barrier_wait(&runThreads_b);
-	}
-
 	void ThreadedBenchmark::runThread(unsigned threadNum) {
-		//for (;;) {
-			//cerr << "thread " << threadNum << " waiting" << endl;
-			pthread_barrier_wait(&runThreads_b);
-			//if (stopThreads) { return; }
+		for (;;) {
+			startWaitingThreads(&runThreads_entry_b);
+			if (stopThreads) { return; }
 
 			{ // init
 				const int isSerial = pthread_barrier_wait(&init_b);
@@ -207,7 +233,8 @@ namespace adhd {
 				if (PTHREAD_BARRIER_SERIAL_THREAD == isSerial)
 					finish(threadNum); }
 			//break;
-		//}
+			startWaitingThreads(&runThreads_exit_b);
+		}
 	}
 
 	// placeholders: no pure virtual methods to allow children to override no
