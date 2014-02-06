@@ -23,8 +23,8 @@ namespace adhd {
 					iterator & operator++() { ptr->next(); return *this; }
 					W & operator*() { return *(ptr.get()); }
 
-					bool operator==(const iterator & rhs) const { return ptr->equals(*(rhs.ptr)); }
-					bool operator!=(const iterator & rhs) const { return !(ptr->equals(*(rhs.ptr))); }
+					bool operator==(const iterator & rhs) const { return *ptr == *(rhs.ptr); }
+					bool operator!=(const iterator & rhs) const { return *ptr != *(rhs.ptr); }
 					W * operator->() { return ptr.get(); }
 
 					friend inline std::ostream & operator<<(std::ostream & os, const iterator & up) {
@@ -38,7 +38,6 @@ namespace adhd {
 			virtual void gotoBegin() = 0;
 			virtual void gotoEnd() = 0;
 			virtual void next() = 0;
-			virtual bool equals(const RangeInterface & rhs) const = 0;
 
 			virtual RangeInterface * clone() const = 0;
 
@@ -49,9 +48,6 @@ namespace adhd {
 
 			RangeInterface & operator++() { next(); return *this; }
 			const RangeInterface & operator*() const { return *this; }
-
-			bool operator==(const RangeInterface & rhs) const { return equals(rhs); }
-			bool operator!=(const RangeInterface & rhs) const { return !equals(rhs); }
 
 			friend inline std::ostream & operator<<(std::ostream & os, const RangeInterface & ri) {
 				return ri.toOStream(os);
@@ -108,12 +104,15 @@ namespace adhd {
 						current = min;
 				}
 
-				virtual bool equals(const RangeInterface & ri) const override {
-					const Range & rhs = dynamic_cast<const Range &>(ri);
+				bool operator==(const Range & rhs) const {
 					return min == rhs.min
 						&& max == rhs.max
 						&& current == rhs.current
 						&& reset == rhs.reset;
+				}
+
+				bool operator!=(const Range & rhs) const {
+					return !(*this == rhs);
 				}
 
 				const Range & operator *() const { return *this; }
@@ -182,9 +181,12 @@ namespace adhd {
 
 				virtual void next() override { whileTrue(&field_next); }
 
-				virtual bool equals(const RangeInterface & ri) const override {
-					const RangeSet & rhs = dynamic_cast<const RangeSet &>(ri);
+				bool operator==(const RangeSet & rhs) const {
 					return values == rhs.values;
+				}
+
+				bool operator!=(const RangeSet & rhs) const {
+					return values != rhs.values;
 				}
 
 				const RangeSet & operator*() const { return *this; }

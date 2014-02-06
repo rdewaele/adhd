@@ -20,9 +20,13 @@ namespace adhd {
 	bool SingleBenchmark::atMax() const { return true; }
 	void SingleBenchmark::gotoBegin() { reset = false; }
 	void SingleBenchmark::gotoEnd() { reset = true; }
-	bool SingleBenchmark::equals(const RangeInterface & ri) const {
-		const SingleBenchmark & sb = dynamic_cast<const SingleBenchmark &>(ri);
-		return reset == sb.reset;
+
+	bool SingleBenchmark::operator==(const SingleBenchmark & rhs) const {
+		return reset == rhs.reset;
+	}
+
+	bool SingleBenchmark::operator!=(const SingleBenchmark & rhs) const {
+		return reset != rhs.reset;
 	}
 
 	ostream & SingleBenchmark::toOStream(ostream & os) const {
@@ -175,14 +179,17 @@ namespace adhd {
 		threadRange.gotoEnd();
 	}
 	
-	bool ThreadedBenchmark::equals(const RangeInterface & ri) const {
-		const ThreadedBenchmark & tmp = dynamic_cast<const ThreadedBenchmark &>(ri);
-		return threadRange.equals(tmp.threadRange);
-	}
-
 	ostream & ThreadedBenchmark::toOStream(ostream & os) const {
 		os << "ThreadedBenchmark: ";
 		return threadRange.toOStream(os);
+	}
+
+	bool ThreadedBenchmark::operator==(const ThreadedBenchmark & rhs) const {
+		return threadRange == rhs.threadRange;
+	}
+
+	bool ThreadedBenchmark::operator!=(const ThreadedBenchmark & rhs) const {
+		return threadRange != rhs.threadRange;
 	}
 
 	unsigned ThreadedBenchmark::minThreads() const {

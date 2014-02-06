@@ -155,7 +155,7 @@ class TestThreaded: public ThreadedBenchmark {
 			cout << spread.asHuman();
 		}
 
-#if 1
+#if 0
 		// regular loop nesting
 		virtual void next() final override {
 			iterations.next();
@@ -165,10 +165,21 @@ class TestThreaded: public ThreadedBenchmark {
 #else
 		// loop inversion as proof of concept
 		// (slower because more threads are being created in total)
+		// XXX NOTE: this also need an override for == and != operators, to take
+		// into account that the outer loop isn't finished when ThreadedBenchmark
+		// thinks it is ... ;-)
 		virtual void next() final override {
 			ThreadedBenchmark::next();
 			if (ThreadedBenchmark::atMin())
 				iterations.next();
+		}
+
+		bool operator==(const TestThreaded & rhs) const {
+			return iterations == rhs.iterations;
+		}
+
+		bool operator!=(const TestThreaded & rhs) const {
+			return iterations != rhs.iterations;
 		}
 #endif
 
@@ -188,11 +199,6 @@ class TestThreaded: public ThreadedBenchmark {
 		virtual void gotoEnd() final override {
 			ThreadedBenchmark::gotoEnd();
 			iterations.gotoEnd();
-		}
-
-		virtual bool equals(const RangeInterface & ri) const final override {
-			const TestThreaded & tmp = dynamic_cast<const TestThreaded &>(ri);
-			return ThreadedBenchmark::equals(ri) && iterations.equals(tmp.iterations);
 		}
 
 		virtual ostream & toOStream(ostream & os) const final override {
@@ -229,7 +235,7 @@ int main(int argc, char * argv[]) {
 		cout << "TestSingle range-based for:" << endl;
 		for (auto & tmp: ts) { cout << tmp << endl; }
 		cout << "TestSingle run:" << endl;
-		ts.runAll();
+		runBenchmark(ts);
 	}
 
 	{ // threaded
@@ -237,7 +243,7 @@ int main(int argc, char * argv[]) {
 		cout << "TestThreaded range-based for:" << endl;
 		for (auto & tmp: tt) { cout << tmp << endl; }
 		cout << endl << "TestThreaded run:" << endl;
-		tt.runAll();
+		runBenchmark(tt);
 	}
 
 	return 0;

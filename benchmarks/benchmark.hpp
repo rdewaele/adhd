@@ -16,16 +16,17 @@ namespace adhd {
 			// BenchmarkInterface
 			virtual void run() = 0;
 
-			void runAll() {
-				for (auto & tmp: *this)
-					tmp.run();
-			}
-
 			// RangeInterface
 			// overload return type to enable range-based loops for
 			// BenchmarkInterfaces specifically
 			virtual BenchmarkInterface * clone() const = 0;
 	};
+
+	template <typename BIC>
+		void runBenchmark(BIC & bi) {
+			for (auto & tmp: bi)
+				tmp.run();
+		}
 
 	// One-shot benchmark: no variants
 	class SingleBenchmark: public BenchmarkInterface {
@@ -38,9 +39,10 @@ namespace adhd {
 			virtual bool atMax() const final override;
 			virtual void gotoBegin() final override;
 			virtual void gotoEnd() final override;
-			virtual bool equals(const RangeInterface &) const final override;
-
 			virtual std::ostream & toOStream(std::ostream & os) const override;
+
+			bool operator==(const SingleBenchmark &) const;
+			bool operator!=(const SingleBenchmark &) const;
 
 		private:
 			bool reset;
@@ -58,8 +60,10 @@ namespace adhd {
 			virtual bool atMax() const override;
 			virtual void gotoBegin() override;
 			virtual void gotoEnd() override;
-			virtual bool equals(const RangeInterface &) const override;
 			virtual std::ostream & toOStream(std::ostream & os) const override;
+
+			bool operator==(const ThreadedBenchmark &) const;
+			bool operator!=(const ThreadedBenchmark &) const;
 
 			// BenchmarkInterface
 			virtual void run() override;
