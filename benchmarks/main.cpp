@@ -108,8 +108,8 @@ class TestSingle: public SingleBenchmark {
 
 class TestThreaded: public ThreadedBenchmark {
 	public:
-		TestThreaded(unsigned min, unsigned max, unsigned iters)
-			: ThreadedBenchmark(min, max),
+		TestThreaded(unsigned _min, unsigned _max, unsigned iters)
+			: ThreadedBenchmark(_min, _max),
 			iterations(Range<unsigned>(0, iters), Range<unsigned>(1, 2)),
 			shared(nullptr),
 			spread()

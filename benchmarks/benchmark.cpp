@@ -10,14 +10,13 @@
 using namespace std;
 
 namespace adhd {
-	/*
-	 * SingleBenchmark
-	 */
+	/****************************************************************************/
+	// SingleBenchmark
+
 	SingleBenchmark::SingleBenchmark(): Range(0) {}
 
-	/*
-	 * ThreadedBenchmark
-	 */
+	/****************************************************************************/
+	// ThreadedBenchmark
 
 	// main thread function that will be passed to pthread_create, as method
 	// pointers can (should/must) not be used; qualifying the function as
@@ -27,12 +26,12 @@ namespace adhd {
 	}
 	static auto threadMain = reinterpret_cast<void * (*)(void *)>(c_thread_main);
 
-	ThreadedBenchmark::ThreadedBenchmark(unsigned min, unsigned max):
+	ThreadedBenchmark::ThreadedBenchmark(unsigned _min, unsigned _max):
+		Range(_min, _max),
 		pthreadIDs(max),
 		bmThreads(max),
-		threadRange(min, max),
 		stopThreads(false),
-		threadsRunning(false),
+		runningThreads(false),
 		spin_go(0),
 		spin_go_wait(0)
 	{
@@ -113,7 +112,7 @@ namespace adhd {
 	void ThreadedBenchmark::spawnThreads() {
 		const unsigned nthr = numThreads();
 
-		if(!threadsRunning) {
+		if(!runningThreads) {
 			init_barriers();
 			for (unsigned t = 0; t < nthr; ++t) {
 				bmThreads[t] = BenchmarkThread {t, this};
@@ -121,14 +120,14 @@ namespace adhd {
 				if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
 				setaffinity_linux(t, pthreadIDs[t]);
 			}
-			threadsRunning = true;
+			runningThreads = true;
 		}
 	}
 
 	void ThreadedBenchmark::joinThreads() {
 		const unsigned nthr = numThreads();
 
-		if (threadsRunning) {
+		if (runningThreads) {
 			stopThreads = true;
 			startWaitingThreads(&runThreads_entry_b);
 
@@ -136,54 +135,18 @@ namespace adhd {
 				pthread_join(pthreadIDs[t], NULL);
 			destroy_barriers();
 			stopThreads = false;
-			threadsRunning = false;
+			runningThreads = false;
 		} 
 	}
 
 	void ThreadedBenchmark::next() {
 		joinThreads();
-		threadRange.next();
-	}
-	
-	bool ThreadedBenchmark::atMin() const {
-		return threadRange.atMin();
-	}
-	
-	bool ThreadedBenchmark::atMax() const {
-		return threadRange.atMax();
-	}
-	
-	void ThreadedBenchmark::gotoBegin() {
-		threadRange.gotoBegin();
-	}
-	
-	void ThreadedBenchmark::gotoEnd() {
-		threadRange.gotoEnd();
+		Range::next();
 	}
 	
 	ostream & ThreadedBenchmark::toOStream(ostream & os) const {
 		os << "ThreadedBenchmark: ";
-		return threadRange.toOStream(os);
-	}
-
-	bool ThreadedBenchmark::operator==(const ThreadedBenchmark & rhs) const {
-		return threadRange == rhs.threadRange;
-	}
-
-	bool ThreadedBenchmark::operator!=(const ThreadedBenchmark & rhs) const {
-		return threadRange != rhs.threadRange;
-	}
-
-	unsigned ThreadedBenchmark::minThreads() const {
-		return threadRange.min;
-	}
-
-	unsigned ThreadedBenchmark::maxThreads() const {
-		return threadRange.max;
-	}
-
-	unsigned ThreadedBenchmark::numThreads() const {
-		return threadRange.getValue();
+		return Range::toOStream(os);
 	}
 
 	void ThreadedBenchmark::runThread(unsigned threadNum) {

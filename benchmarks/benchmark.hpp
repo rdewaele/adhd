@@ -39,7 +39,7 @@ namespace adhd {
 	};
 
 	// Threaded benchmark: run a number of threads as simultaneously as possible
-	class ThreadedBenchmark: public BenchmarkInterface {
+	class ThreadedBenchmark: public virtual BenchmarkInterface, public Range<unsigned> {
 		public:
 			ThreadedBenchmark(unsigned minThreads, unsigned maxThreads);
 			ThreadedBenchmark(const ThreadedBenchmark &) = delete;
@@ -47,22 +47,16 @@ namespace adhd {
 
 			// RangeInterface
 			virtual void next() override;
-			virtual bool atMin() const override;
-			virtual bool atMax() const override;
-			virtual void gotoBegin() override;
-			virtual void gotoEnd() override;
 			virtual std::ostream & toOStream(std::ostream & os) const override;
-
-			bool operator==(const ThreadedBenchmark &) const;
-			bool operator!=(const ThreadedBenchmark &) const;
 
 			// BenchmarkInterface
 			virtual void run() override;
+			virtual ThreadedBenchmark * clone() const = 0;
 
 			// ThreadedBenchmark
-			unsigned minThreads() const;
-			unsigned maxThreads() const;
-			unsigned numThreads() const;
+			inline unsigned minThreads() const { return min; }
+			inline unsigned maxThreads() const { return max; }
+			inline unsigned numThreads() const { return getValue(); }
 
 			// allow the plain old C function passed to pthread_create to invoke the
 			// benchmark, supplying some extra thread-unique parameters as argument
@@ -101,12 +95,12 @@ namespace adhd {
 			std::vector<pthread_t> pthreadIDs;
 			std::vector<BenchmarkThread> bmThreads;
 
-			Range<unsigned> threadRange;
-
 			pthread_barrier_t runThreads_entry_b;
 			pthread_barrier_t runThreads_exit_b;
 			bool stopThreads;
-			bool threadsRunning;
+			// TODO represent number of running threads, which should render overriding next() redundant
+			// can not get rid of the flag anyway, so might aswell represent more information :)
+			bool runningThreads;
 
 			std::atomic_uint spin_go;
 			std::atomic_uint spin_go_wait;
