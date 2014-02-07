@@ -47,7 +47,6 @@ namespace adhd {
 			virtual std::ostream & toOStream(std::ostream & os) const = 0;
 
 			RangeInterface & operator++() { next(); return *this; }
-			const RangeInterface & operator*() const { return *this; }
 
 			friend inline std::ostream & operator<<(std::ostream & os, const RangeInterface & ri) {
 				return ri.toOStream(os);
@@ -188,8 +187,6 @@ namespace adhd {
 				bool operator!=(const RangeSet & rhs) const {
 					return values != rhs.values;
 				}
-
-				const RangeSet & operator*() const { return *this; }
 
 				virtual void gotoBegin() override { whileTrue(&field_gotoBegin); }
 				virtual void gotoEnd() override { whileTrue(&field_gotoEnd); }
