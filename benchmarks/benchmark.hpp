@@ -46,7 +46,6 @@ namespace adhd {
 			virtual ~ThreadedBenchmark();
 
 			// RangeInterface
-			virtual void next() override;
 			virtual std::ostream & toOStream(std::ostream & os) const override;
 
 			// BenchmarkInterface
@@ -90,7 +89,7 @@ namespace adhd {
 			void destroy_barriers();
 
 			void spawnThreads();
-			void joinThreads();
+			void joinThreads(bool force);
 
 			std::vector<pthread_t> pthreadIDs;
 			std::vector<BenchmarkThread> bmThreads;
@@ -98,9 +97,8 @@ namespace adhd {
 			pthread_barrier_t runThreads_entry_b;
 			pthread_barrier_t runThreads_exit_b;
 			bool stopThreads;
-			// TODO represent number of running threads, which should render overriding next() redundant
-			// can not get rid of the flag anyway, so might aswell represent more information :)
-			bool runningThreads;
+
+			unsigned runningThreads;
 
 			std::atomic_uint spin_go;
 			std::atomic_uint spin_go_wait;

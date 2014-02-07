@@ -31,7 +31,7 @@ namespace adhd {
 		pthreadIDs(max),
 		bmThreads(max),
 		stopThreads(false),
-		runningThreads(false),
+		runningThreads(0),
 		spin_go(0),
 		spin_go_wait(0)
 	{
@@ -40,7 +40,7 @@ namespace adhd {
 	}
 
 	// clean up threads when class gets destructed (hide implementation detail)
-	ThreadedBenchmark::~ThreadedBenchmark() { joinThreads(); }
+	ThreadedBenchmark::~ThreadedBenchmark() { joinThreads(true); }
 
 	// linux-specific way of setting thread affinity
 	static inline void setaffinity_linux(const unsigned tnum, const pthread_t & thread) {
@@ -104,6 +104,7 @@ namespace adhd {
 	void ThreadedBenchmark::run() {
 		// start active threads and block until all threads finished executing
 		// their init/ready/set/go/finish routine
+		joinThreads(false);
 		spawnThreads();
 		startWaitingThreads(&runThreads_entry_b);
 		startWaitingThreads(&runThreads_exit_b);
@@ -120,30 +121,29 @@ namespace adhd {
 				if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
 				setaffinity_linux(t, pthreadIDs[t]);
 			}
-			runningThreads = true;
+			runningThreads = nthr;
 		}
 	}
 
-	void ThreadedBenchmark::joinThreads() {
+	void ThreadedBenchmark::joinThreads(bool force) {
 		const unsigned nthr = numThreads();
 
-		if (runningThreads) {
-			stopThreads = true;
-			startWaitingThreads(&runThreads_entry_b);
+		// only join threads when they are actually running
+		if (runningThreads > 0)
+			// only join running threads when forced (e.g. destructor) or the number
+			// of active threads changed
+			if (force || (runningThreads != nthr)) {
+				stopThreads = true;
+				startWaitingThreads(&runThreads_entry_b);
 
-			for (unsigned t = 0; t < nthr; ++t)
-				pthread_join(pthreadIDs[t], NULL);
-			destroy_barriers();
-			stopThreads = false;
-			runningThreads = false;
-		} 
+				for (unsigned t = 0; t < runningThreads; ++t)
+					pthread_join(pthreadIDs[t], NULL);
+				destroy_barriers();
+				stopThreads = false;
+				runningThreads = 0;
+			}
 	}
 
-	void ThreadedBenchmark::next() {
-		joinThreads();
-		Range::next();
-	}
-	
 	ostream & ThreadedBenchmark::toOStream(ostream & os) const {
 		os << "ThreadedBenchmark: ";
 		return Range::toOStream(os);
