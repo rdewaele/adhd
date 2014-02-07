@@ -13,25 +13,7 @@ namespace adhd {
 	/*
 	 * SingleBenchmark
 	 */
-	SingleBenchmark::SingleBenchmark(): reset(false) {}
-
-	void SingleBenchmark::next() { reset = !reset; }
-	bool SingleBenchmark::atMin() const { return true; }
-	bool SingleBenchmark::atMax() const { return true; }
-	void SingleBenchmark::gotoBegin() { reset = false; }
-	void SingleBenchmark::gotoEnd() { reset = true; }
-
-	bool SingleBenchmark::operator==(const SingleBenchmark & rhs) const {
-		return reset == rhs.reset;
-	}
-
-	bool SingleBenchmark::operator!=(const SingleBenchmark & rhs) const {
-		return reset != rhs.reset;
-	}
-
-	ostream & SingleBenchmark::toOStream(ostream & os) const {
-		return os << "SingleBenchmark instance (" << reset << ")" << endl;
-	}
+	SingleBenchmark::SingleBenchmark(): Range(0) {}
 
 	/*
 	 * ThreadedBenchmark

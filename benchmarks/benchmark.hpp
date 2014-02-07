@@ -11,43 +11,34 @@
 
 namespace adhd {
 
+	// XXX Benchmarks and ranges are very similar in the aspect that they share
+	//     almost the same interface. However: ranges compose horizontally, but
+	//     benchmarks do not, they compose vertically: run()'s scope should close
+	//     over the different benchmarks it uses, and there should be only one
+	//     run() method for a certain benchmark. We can use multiple inheritance
+	//     to tie both the horizontal and the vertical composition, e.g. with
+	//     Range(Set) implementing (most of) the benchmark's RangeInterface.
 	class BenchmarkInterface: public virtual RangeInterface {
 		public:
-			// BenchmarkInterface
 			virtual void run() = 0;
 
-			// RangeInterface
 			// overload return type to enable range-based loops for
 			// BenchmarkInterfaces specifically
 			virtual BenchmarkInterface * clone() const = 0;
 	};
 
-	template <typename BIC>
-		void runBenchmark(BIC & bi) {
-			for (auto & tmp: bi)
-				tmp.run();
-		}
+	// for convenience :-)
+	template <typename B>
+		inline void runBenchmark(B & b) { for (auto & i: b) { i.run(); } }
 
 	// One-shot benchmark: no variants
-	class SingleBenchmark: public BenchmarkInterface {
+	class SingleBenchmark: public virtual BenchmarkInterface, public Range<unsigned> {
 		public:
 			SingleBenchmark();
-
-			// RangeInterface
-			virtual void next() final override;
-			virtual bool atMin() const final override;
-			virtual bool atMax() const final override;
-			virtual void gotoBegin() final override;
-			virtual void gotoEnd() final override;
-			virtual std::ostream & toOStream(std::ostream & os) const override;
-
-			bool operator==(const SingleBenchmark &) const;
-			bool operator!=(const SingleBenchmark &) const;
-
-		private:
-			bool reset;
+			virtual SingleBenchmark * clone() const override = 0;
 	};
 
+	// Threaded benchmark: run a number of threads as simultaneously as possible
 	class ThreadedBenchmark: public BenchmarkInterface {
 		public:
 			ThreadedBenchmark(unsigned minThreads, unsigned maxThreads);
