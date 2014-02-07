@@ -55,7 +55,7 @@ analyze:
 	clang $(CXXFLAGS) --analyze $(SOURCES) $(LIBSOURCES)
 
 valgrind: $(PROGRAM)
-	valgrind -v --leak-check=full --show-reachable=yes ./$<
+	valgrind -v --fair-sched=try --leak-check=full --show-reachable=yes ./$<
 
 $(MAKEDEP): $(SOURCES) $(LIBSOURCES)
 	$(CXX) $(CXXFLAGS) -MM $^ > $@
