@@ -1,6 +1,5 @@
 #pragma once
 
-#include "config.hpp"
 #include "range.hpp"
 #include "timings.hpp"
 
