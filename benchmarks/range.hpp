@@ -123,9 +123,6 @@ namespace adhd {
 						<< (r.reset ? " (reset)" : "");
 				}
 
-				// TODO: put these behind getters because their name is too generic and
-				// child classes may shadow these involuntary, resulting in unnecessary warnings
-				// etc. etc. :-)
 				const T minValue;
 				const T maxValue;
 
