@@ -27,8 +27,8 @@ namespace adhd {
 					bool operator!=(const iterator & rhs) const { return *ptr != *(rhs.ptr); }
 					W * operator->() { return ptr.get(); }
 
-					friend inline std::ostream & operator<<(std::ostream & os, const iterator & up) {
-						return up.ptr->toOStream(os);
+					friend inline std::ostream & operator<<(std::ostream & os, const iterator & rii) {
+						return os << *rii;
 					}
 
 					private:
@@ -44,13 +44,7 @@ namespace adhd {
 			virtual bool atMin() const = 0;
 			virtual bool atMax() const = 0;
 
-			virtual std::ostream & toOStream(std::ostream & os) const = 0;
-
 			RangeInterface & operator++() { next(); return *this; }
-
-			friend inline std::ostream & operator<<(std::ostream & os, const RangeInterface & ri) {
-				return ri.toOStream(os);
-			}
 
 			// XXX '= default' seems nicer, but icpc rejects this with error #809
 			// when the destructor is overridden
@@ -124,9 +118,9 @@ namespace adhd {
 				virtual void gotoBegin() override { current = min; reset = false; }
 				virtual void gotoEnd() override { current = min; reset = true; }
 
-				virtual std::ostream & toOStream (std::ostream & os) const override {
-					return os << "[" << min << "," << max << "]" << ":" << current
-						<< (reset ? " (reset)" : "");
+				friend inline std::ostream & operator<<(std::ostream & os, const Range & r) {
+					return os << "[" << r.min << "," << r.max << "]" << ":" << r.current
+						<< (r.reset ? " (reset)" : "");
 				}
 
 				// TODO: put these behind getters because their name is too generic and
@@ -207,10 +201,10 @@ namespace adhd {
 						return std::tuple_cat(values, rs.values);
 					}
 
-				virtual std::ostream & toOStream(std::ostream & os) const override {
-					whileTrue(&field_toOStream, os);
-					return os;
-				}
+				friend inline
+					std::ostream & operator<<(std::ostream & os, const RangeSet & rs) {
+						return rs.printfields(os);
+					}
 
 			private:
 				Fields values;
@@ -247,6 +241,25 @@ namespace adhd {
 					}
 
 
+				// printfields applies operator<< to every field contained in this RangeSet
+				// this enables proper overloading on operator<< for the contained fields
+				// (cfr. alternative using whileTrue, which would upcast all fields to
+				//  RangeInterface, which in turn would require an overridable method in
+				//  the interface to indirectly apply the operator<<.)
+				template <std::size_t I = 0>
+					typename std::enable_if<I + 1 == sizeof...(TS), std::ostream &>::type
+					printfields(std::ostream & os) const {
+						return os << std::get<I>(values);
+					}
+
+				template <std::size_t I = 0>
+					typename std::enable_if<I + 1 < sizeof...(TS), std::ostream &>::type
+					printfields(std::ostream & os) const {
+						os << std::get<I>(values) << " ";
+						return printfields<I + 1>(os);
+					}
+
+
 				// wrappers conforming to whiletrue interface
 
 				static inline bool field_next(RangeInterface & r) {
@@ -269,11 +282,6 @@ namespace adhd {
 
 				static inline bool field_gotoEnd(RangeInterface & r) {
 					r.gotoEnd();
-					return true;
-				}
-
-				static inline bool field_toOStream(const RangeInterface & r, std::ostream & os) {
-					r.toOStream(os);
 					return true;
 				}
 		};

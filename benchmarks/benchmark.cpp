@@ -144,9 +144,8 @@ namespace adhd {
 			}
 	}
 
-	ostream & ThreadedBenchmark::toOStream(ostream & os) const {
-		os << "ThreadedBenchmark: ";
-		return Range::toOStream(os);
+	ostream & operator<<(std::ostream & os, const ThreadedBenchmark & tb) {
+		return os << "ThreadedBenchmark: " << static_cast<const Range<unsigned> &>(tb);
 	}
 
 	void ThreadedBenchmark::runThread(unsigned threadNum) {

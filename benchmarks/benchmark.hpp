@@ -45,9 +45,6 @@ namespace adhd {
 			ThreadedBenchmark(const ThreadedBenchmark &) = delete;
 			virtual ~ThreadedBenchmark();
 
-			// RangeInterface
-			virtual std::ostream & toOStream(std::ostream & os) const override;
-
 			// BenchmarkInterface
 			virtual void run() override;
 			virtual ThreadedBenchmark * clone() const = 0;
@@ -56,6 +53,8 @@ namespace adhd {
 			inline unsigned minThreads() const { return min; }
 			inline unsigned maxThreads() const { return max; }
 			inline unsigned numThreads() const { return getValue(); }
+
+			friend std::ostream & operator<<(std::ostream &, const ThreadedBenchmark &);
 
 			// allow the plain old C function passed to pthread_create to invoke the
 			// benchmark, supplying some extra thread-unique parameters as argument

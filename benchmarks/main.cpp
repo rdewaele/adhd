@@ -193,10 +193,9 @@ class TestThreaded: public ThreadedBenchmark {
 			iterations.gotoEnd();
 		}
 
-		virtual ostream & toOStream(ostream & os) const final override {
-			ThreadedBenchmark::toOStream(os);
-			os << " | TestThreaded: ";
-			return iterations.toOStream(os);
+		friend inline ostream & operator<<(ostream & os, const TestThreaded & tt) {
+			return os << static_cast<const ThreadedBenchmark &>(tt)
+				<< " | TestThreaded: " << tt.iterations;
 		}
 
 	private:
