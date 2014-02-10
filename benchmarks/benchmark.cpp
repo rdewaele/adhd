@@ -182,10 +182,9 @@ namespace adhd {
 	}
 
 	// placeholders: no pure virtual methods to allow children to override no
-	// more methods than they need
+	// more methods than they need, leaving only go() as abstract method
 	void ThreadedBenchmark::init(unsigned) {}
 	void ThreadedBenchmark::ready(unsigned) {}
 	void ThreadedBenchmark::set(unsigned) {}
-	void ThreadedBenchmark::go(unsigned) {}
 	void ThreadedBenchmark::finish(unsigned) {}
 }

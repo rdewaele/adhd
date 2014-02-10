@@ -66,11 +66,11 @@ namespace adhd {
 
 		protected:
 			// placeholders: no pure virtual methods to allow children to override no
-			// more methods than they need
+			// more methods than they need, leaving only go() as abstract method
 			virtual void init(unsigned threadNum);
 			virtual void ready(unsigned threadNum);
 			virtual void set(unsigned threadNum);
-			virtual void go(unsigned threadNum);
+			virtual void go(unsigned threadNum) = 0;
 			virtual void finish(unsigned threadNum);
 
 			// synchronize in go() method before executing the actual benchmark code
