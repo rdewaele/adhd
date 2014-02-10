@@ -106,17 +106,17 @@ class TestSingle: public SingleBenchmark {
 // THREADED
 //
 
-class TestThreaded: public ThreadedBenchmark {
+class TestThreaded: public ThreadedBenchmark, public RangeSet<unsigned, unsigned> {
 	public:
 		TestThreaded(unsigned _min, unsigned _max, unsigned iters)
 			: ThreadedBenchmark(_min, _max),
-			iterations(Range<unsigned>(0, iters), Range<unsigned>(1, 2)),
+			RangeSet(Range<unsigned>(0, iters), Range<unsigned>(1, 2)),
 			shared(nullptr),
 			spread()
 	{}
 
 		virtual TestThreaded * clone() const override {
-			return new TestThreaded(minThreads(), maxThreads(), iterations.getMax<0>());
+			return new TestThreaded(minThreads(), maxThreads(), getMax<0>());
 		}
 
 		virtual void init(unsigned) final override {
@@ -150,56 +150,54 @@ class TestThreaded: public ThreadedBenchmark {
 #if 0
 		// regular loop nesting
 		virtual void next() final override {
-			iterations.next();
-			if (iterations.atMin())
+			RangeSet::next();
+			if (RangeSet::atMin())
 				ThreadedBenchmark::next();
 		}
 #else
 		// loop inversion as proof of concept
 		// (slower because more threads are being created in total)
-		// XXX NOTE: this also need an override for == and != operators, to take
-		// into account that the outer loop isn't finished when ThreadedBenchmark
-		// thinks it is ... ;-)
 		virtual void next() final override {
 			ThreadedBenchmark::next();
 			if (ThreadedBenchmark::atMin())
-				iterations.next();
-		}
-
-		bool operator==(const TestThreaded & rhs) const {
-			return iterations == rhs.iterations;
-		}
-
-		bool operator!=(const TestThreaded & rhs) const {
-			return iterations != rhs.iterations;
+				RangeSet::next();
 		}
 #endif
 
+		bool operator==(const TestThreaded & rhs) const {
+			return static_cast<const RangeSet &>(*this) == rhs
+				&& static_cast<const ThreadedBenchmark &>(*this) == rhs;
+		}
+
+		bool operator!=(const TestThreaded & rhs) const {
+			return static_cast<const RangeSet &>(*this) != rhs
+				|| static_cast<const ThreadedBenchmark &>(*this) != rhs;
+		}
+
 		virtual bool atMax() const final override {
-			return ThreadedBenchmark::atMax() && iterations.atMax();
+			return ThreadedBenchmark::atMax() && RangeSet::atMax();
 		}
 
 		virtual bool atMin() const final override {
-			return ThreadedBenchmark::atMin() && iterations.atMin();
+			return ThreadedBenchmark::atMin() && RangeSet::atMin();
 		}
 
 		virtual void gotoBegin() final override {
 			ThreadedBenchmark::gotoBegin();
-			iterations.gotoBegin();
+			RangeSet::gotoBegin();
 		}
 
 		virtual void gotoEnd() final override {
 			ThreadedBenchmark::gotoEnd();
-			iterations.gotoEnd();
+			RangeSet::gotoEnd();
 		}
 
 		friend inline ostream & operator<<(ostream & os, const TestThreaded & tt) {
 			return os << static_cast<const ThreadedBenchmark &>(tt)
-				<< " | TestThreaded: " << tt.iterations;
+				<< " | TestThreaded: " << static_cast<const RangeSet &>(tt);
 		}
 
 	private:
-		RangeSet<unsigned, unsigned> iterations;
 		unsigned * shared;
 		SpreadTimings spread;
 };
