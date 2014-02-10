@@ -14,25 +14,25 @@ namespace adhd {
 			template <typename W>
 				class iterator: public std::iterator<std::input_iterator_tag, W> {
 					public:
-					typedef std::unique_ptr<W> ptr_ri;
+						typedef std::unique_ptr<W> ptr_ri;
 
-					iterator(const W & ri): ptr(ri.clone()) {}
-					iterator(ptr_ri & _ptr) { ptr.swap(_ptr); }
-					iterator(const iterator & i): iterator(*(i.ptr)) {}
+						iterator(const W & ri): ptr(ri.clone()) {}
+						iterator(ptr_ri & _ptr) { ptr.swap(_ptr); }
+						iterator(const iterator & i): iterator(*(i.ptr)) {}
 
-					iterator & operator++() { ptr->next(); return *this; }
-					W & operator*() { return *(ptr.get()); }
+						iterator & operator++() { ptr->next(); return *this; }
+						W & operator*() { return *(ptr.get()); }
 
-					bool operator==(const iterator & rhs) const { return *ptr == *(rhs.ptr); }
-					bool operator!=(const iterator & rhs) const { return *ptr != *(rhs.ptr); }
-					W * operator->() { return ptr.get(); }
+						bool operator==(const iterator & rhs) const { return *ptr == *(rhs.ptr); }
+						bool operator!=(const iterator & rhs) const { return *ptr != *(rhs.ptr); }
+						W * operator->() { return ptr.get(); }
 
-					friend inline std::ostream & operator<<(std::ostream & os, const iterator & rii) {
-						return os << *rii;
-					}
+						friend inline std::ostream & operator<<(std::ostream & os, const iterator & rii) {
+							return os << *rii;
+						}
 
 					private:
-					ptr_ri ptr;
+						ptr_ri ptr;
 				};
 
 			virtual void gotoBegin() = 0;
