@@ -26,8 +26,8 @@ namespace adhd {
 	}
 	static auto threadMain = reinterpret_cast<void * (*)(void *)>(c_thread_main);
 
-	ThreadedBenchmark::ThreadedBenchmark(unsigned _min, unsigned _max):
-		Range(_min, _max),
+	ThreadedBenchmark::ThreadedBenchmark(unsigned min, unsigned max):
+		Range(min, max),
 		pthreadIDs(max),
 		bmThreads(max),
 		stopThreads(false),

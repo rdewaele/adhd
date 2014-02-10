@@ -50,8 +50,8 @@ namespace adhd {
 			virtual ThreadedBenchmark * clone() const = 0;
 
 			// ThreadedBenchmark
-			inline unsigned minThreads() const { return min; }
-			inline unsigned maxThreads() const { return max; }
+			inline unsigned minThreads() const { return minValue; }
+			inline unsigned maxThreads() const { return maxValue; }
 			inline unsigned numThreads() const { return getValue(); }
 
 			friend std::ostream & operator<<(std::ostream &, const ThreadedBenchmark &);

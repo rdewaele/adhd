@@ -85,21 +85,21 @@ namespace adhd {
 				typedef T type;
 
 				Range(T constant): Range(constant, constant) {}
-				Range(T _min, T _max)
-					: Range(_min < _max ? _min : _max, _min < _max ? _max : _min, false)
+				Range(T min, T max)
+					: Range(min < max ? min : max, min < max ? max : min, false)
 					{}
 
 				virtual Range * clone() const override { return new Range(*this); }
 
 				virtual void next() override {
-					reset = (current >= max) || (++current > max);
+					reset = (current >= maxValue) || (++current > maxValue);
 					if (reset)
-						current = min;
+						current = minValue;
 				}
 
 				bool operator==(const Range & rhs) const {
-					return min == rhs.min
-						&& max == rhs.max
+					return minValue == rhs.minValue
+						&& maxValue == rhs.maxValue
 						&& current == rhs.current
 						&& reset == rhs.reset;
 				}
@@ -112,26 +112,26 @@ namespace adhd {
 
 				T getValue() const { return current; }
 
-				virtual bool atMin() const override { return min == current; }
-				virtual bool atMax() const override { return max == current; }
+				virtual bool atMin() const override { return minValue == current; }
+				virtual bool atMax() const override { return maxValue == current; }
 
-				virtual void gotoBegin() override { current = min; reset = false; }
-				virtual void gotoEnd() override { current = min; reset = true; }
+				virtual void gotoBegin() override { current = minValue; reset = false; }
+				virtual void gotoEnd() override { current = minValue; reset = true; }
 
 				friend inline std::ostream & operator<<(std::ostream & os, const Range & r) {
-					return os << "[" << r.min << "," << r.max << "]" << ":" << r.current
+					return os << "[" << r.minValue << "," << r.maxValue << "]" << ":" << r.current
 						<< (r.reset ? " (reset)" : "");
 				}
 
 				// TODO: put these behind getters because their name is too generic and
 				// child classes may shadow these involuntary, resulting in unnecessary warnings
 				// etc. etc. :-)
-				const T min;
-				const T max;
+				const T minValue;
+				const T maxValue;
 
 			private:
-				Range(T _min, T _max, bool _reset)
-					: min(_min), max(_max), current(_min), reset(_reset)
+				Range(T min, T max, bool _reset)
+					: minValue(min), maxValue(max), current(min), reset(_reset)
 				{}
 
 				T current;
@@ -172,7 +172,7 @@ namespace adhd {
 
 				template <long unsigned int N>
 					typename std::tuple_element<N, Fields>::type::type getMax() const {
-						return std::get<N>(values).max;
+						return std::get<N>(values).maxValue;
 					}
 
 				virtual void next() override { whileTrue(&field_next); }
