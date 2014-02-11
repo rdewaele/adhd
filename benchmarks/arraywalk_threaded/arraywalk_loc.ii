@@ -1,0 +1,139 @@
+#define DEF1 INDEX_T idx0 = 0
+#define DEF2 DEF1; INDEX_T idx1 = 1
+#define DEF3 DEF2; INDEX_T idx2 = 2
+#define DEF4 DEF3; INDEX_T idx3 = 3
+#define DEF5 DEF4; INDEX_T idx4 = 4
+#define DEF6 DEF5; INDEX_T idx5 = 5
+#define DEF7 DEF6; INDEX_T idx6 = 6
+#define DEF8 DEF7; INDEX_T idx7 = 7
+#define DEF9 DEF8; INDEX_T idx8 = 8
+#define DEF10 DEF9; INDEX_T idx9 = 9
+#define DEF11 DEF10; INDEX_T idx10 = 10
+#define DEF12 DEF11; INDEX_T idx11 = 11
+#define DEF13 DEF12; INDEX_T idx12 = 12
+#define DEF14 DEF13; INDEX_T idx13 = 13
+#define DEF15 DEF14; INDEX_T idx14 = 14
+#define DEF16 DEF15; INDEX_T idx15 = 15
+#define DEF17 DEF16; INDEX_T idx16 = 16
+#define DEF18 DEF17; INDEX_T idx17 = 17
+#define DEF19 DEF18; INDEX_T idx18 = 18
+#define DEF20 DEF19; INDEX_T idx19 = 19
+
+#define SET1(A) idx0 = A[idx0]
+#define SET2(A) SET1(A); idx1 = A[idx1]
+#define SET3(A) SET2(A); idx2 = A[idx2]
+#define SET4(A) SET3(A); idx3 = A[idx3]
+#define SET5(A) SET4(A); idx4 = A[idx4]
+#define SET6(A) SET5(A); idx5 = A[idx5]
+#define SET7(A) SET6(A); idx6 = A[idx6]
+#define SET8(A) SET7(A); idx7 = A[idx7]
+#define SET9(A) SET8(A); idx8 = A[idx8]
+#define SET10(A) SET9(A); idx9 = A[idx9]
+#define SET11(A) SET10(A); idx10 = A[idx10]
+#define SET12(A) SET11(A); idx11 = A[idx11]
+#define SET13(A) SET12(A); idx12 = A[idx12]
+#define SET14(A) SET13(A); idx13 = A[idx13]
+#define SET15(A) SET14(A); idx14 = A[idx14]
+#define SET16(A) SET15(A); idx15 = A[idx15]
+#define SET17(A) SET16(A); idx16 = A[idx16]
+#define SET18(A) SET17(A); idx17 = A[idx17]
+#define SET19(A) SET18(A); idx18 = A[idx18]
+#define SET20(A) SET19(A); idx19 = A[idx19]
+
+#define SUM1(T) idx0
+#define SUM2(T) static_cast<T>(SUM1(T) + idx1)
+#define SUM3(T) static_cast<T>(SUM2(T) + idx2)
+#define SUM4(T) static_cast<T>(SUM3(T) + idx3)
+#define SUM5(T) static_cast<T>(SUM4(T) + idx4)
+#define SUM6(T) static_cast<T>(SUM5(T) + idx5)
+#define SUM7(T) static_cast<T>(SUM6(T) + idx6)
+#define SUM8(T) static_cast<T>(SUM7(T) + idx7)
+#define SUM9(T) static_cast<T>(SUM8(T) + idx8)
+#define SUM10(T) static_cast<T>(SUM9(T) + idx9)
+#define SUM11(T) static_cast<T>(SUM10(T) + idx10)
+#define SUM12(T) static_cast<T>(SUM11(T) + idx11)
+#define SUM13(T) static_cast<T>(SUM12(T) + idx12)
+#define SUM14(T) static_cast<T>(SUM13(T) + idx13)
+#define SUM15(T) static_cast<T>(SUM14(T) + idx14)
+#define SUM16(T) static_cast<T>(SUM15(T) + idx15)
+#define SUM17(T) static_cast<T>(SUM16(T) + idx16)
+#define SUM18(T) static_cast<T>(SUM17(T) + idx17)
+#define SUM19(T) static_cast<T>(SUM18(T) + idx18)
+#define SUM20(T) static_cast<T>(SUM19(T) + idx19)
+
+#define TIMEDWALK_LOC(NUM) template <typename INDEX_T> \
+	INDEX_T ArrayWalk<INDEX_T>::timedwalk_loc##NUM(uint_fast32_t MiB, \
+	                                               uint64_t & cycles, \
+	                                               uint64_t & reads) \
+	{ \
+		if (NULL == array) \
+			throw length_error(NOT_INITIALIZED); \
+		\
+		uint64_t cStart, cEnd; \
+		constexpr unsigned long mb_reads = (1 << 20) / sizeof(INDEX_T); \
+		DEF##NUM; \
+		reads = NUM * MiB * mb_reads; \
+		cStart = rdtsc(); \
+		for (uint_fast32_t step = 0; step < MiB; ++step) \
+			for (unsigned long i = 0; i < mb_reads; ++i) { \
+				SET##NUM(array); \
+			} \
+		cEnd = rdtsc(); \
+		cycles = cEnd - cStart; \
+		return SUM##NUM(INDEX_T); \
+	}
+
+TIMEDWALK_LOC(1)
+TIMEDWALK_LOC(2)
+TIMEDWALK_LOC(3)
+TIMEDWALK_LOC(4)
+TIMEDWALK_LOC(5)
+TIMEDWALK_LOC(6)
+TIMEDWALK_LOC(7)
+TIMEDWALK_LOC(8)
+TIMEDWALK_LOC(9)
+TIMEDWALK_LOC(10)
+TIMEDWALK_LOC(11)
+TIMEDWALK_LOC(12)
+TIMEDWALK_LOC(13)
+TIMEDWALK_LOC(14)
+TIMEDWALK_LOC(15)
+TIMEDWALK_LOC(16)
+TIMEDWALK_LOC(17)
+TIMEDWALK_LOC(18)
+TIMEDWALK_LOC(19)
+TIMEDWALK_LOC(20)
+
+template <typename INDEX_T>
+INDEX_T ArrayWalk<INDEX_T>::timedwalk_loc(unsigned locs,
+	                                        uint_fast32_t MiB,
+	                                        uint64_t & cycles,
+	                                        uint64_t & reads)
+{
+#define TIMEDWALK_LOC_CASE(NUM) \
+	case NUM: return timedwalk_loc##NUM(MiB, cycles, reads)
+	switch (locs) {
+		TIMEDWALK_LOC_CASE(1);
+		TIMEDWALK_LOC_CASE(2);
+		TIMEDWALK_LOC_CASE(3);
+		TIMEDWALK_LOC_CASE(4);
+		TIMEDWALK_LOC_CASE(5);
+		TIMEDWALK_LOC_CASE(6);
+		TIMEDWALK_LOC_CASE(7);
+		TIMEDWALK_LOC_CASE(8);
+		TIMEDWALK_LOC_CASE(9);
+		TIMEDWALK_LOC_CASE(10);
+		TIMEDWALK_LOC_CASE(11);
+		TIMEDWALK_LOC_CASE(12);
+		TIMEDWALK_LOC_CASE(13);
+		TIMEDWALK_LOC_CASE(14);
+		TIMEDWALK_LOC_CASE(15);
+		TIMEDWALK_LOC_CASE(16);
+		TIMEDWALK_LOC_CASE(17);
+		TIMEDWALK_LOC_CASE(18);
+		TIMEDWALK_LOC_CASE(19);
+		TIMEDWALK_LOC_CASE(20);
+		default:
+		return 0; //TODO error handling
+	}
+}
