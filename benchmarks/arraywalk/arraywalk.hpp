@@ -20,7 +20,7 @@ namespace arraywalk {
 				ArrayWalk(const Config & cfg = Config());
 				~ArrayWalk();
 
-				virtual void run() final override;
+				virtual void run(adhd::timing_cb) final override;
 				virtual ArrayWalk * clone() const final override;
 
 			private:

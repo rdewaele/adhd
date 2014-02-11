@@ -101,7 +101,7 @@ namespace adhd {
 		pthread_barrier_wait(b);
 	}
 
-	void ThreadedBenchmark::run() {
+	void ThreadedBenchmark::run(timing_cb) {
 		// start active threads and block until all threads finished executing
 		// their init/ready/set/go/finish routine
 		joinThreads(false);

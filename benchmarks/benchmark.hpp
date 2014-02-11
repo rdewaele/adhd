@@ -19,7 +19,7 @@ namespace adhd {
 	//     Range(Set) implementing (most of) the benchmark's RangeInterface.
 	class BenchmarkInterface: public virtual RangeInterface {
 		public:
-			virtual void run() = 0;
+			virtual void run(timing_cb) = 0;
 
 			// overload return type to enable range-based loops for
 			// BenchmarkInterfaces specifically
@@ -28,7 +28,9 @@ namespace adhd {
 
 	// for convenience :-)
 	template <typename B>
-		inline void runBenchmark(B & b) { for (auto & i: b) { i.run(); } }
+		inline void runBenchmark(B & b, timing_cb tcb) {
+			for (auto & i: b) { i.run(tcb); }
+		}
 
 	// One-shot benchmark: no variants
 	class SingleBenchmark: public virtual BenchmarkInterface, public Range<unsigned> {
@@ -45,7 +47,7 @@ namespace adhd {
 			virtual ~ThreadedBenchmark();
 
 			// BenchmarkInterface
-			virtual void run() override;
+			virtual void run(timing_cb) override;
 			virtual ThreadedBenchmark * clone() const = 0;
 
 			// ThreadedBenchmark

@@ -92,7 +92,7 @@ class SpreadTimings: public Timings {
 
 class TestSingle: public SingleBenchmark {
 	public:
-		virtual void run() final override {
+		virtual void run(timing_cb) final override {
 			long long unsigned start = rdtsc();
 			cout << "I am Simple!" << endl;
 			long long unsigned stop = rdtsc();
@@ -219,12 +219,14 @@ int main(int argc, char * argv[]) {
 			break;
 	}
 
+	timing_cb tcb = [] (const Timings &) {};
+
 	{ // single run
 		auto && ts = TestSingle();
 		cout << "TestSingle range-based for:" << endl;
 		for (auto & tmp: ts) { cout << tmp << endl; }
 		cout << "TestSingle run:" << endl;
-		runBenchmark(ts);
+		runBenchmark(ts, tcb);
 	}
 
 	{ // threaded
@@ -232,7 +234,7 @@ int main(int argc, char * argv[]) {
 		cout << "TestThreaded range-based for:" << endl;
 		for (auto & tmp: tt) { cout << tmp << endl; }
 		cout << endl << "TestThreaded run:" << endl;
-		runBenchmark(tt);
+		runBenchmark(tt, tcb);
 	}
 
 	return 0;
