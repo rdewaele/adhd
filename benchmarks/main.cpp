@@ -116,7 +116,7 @@ class TestThreaded: public ThreadedBenchmark, public RangeSet<unsigned, unsigned
 	{}
 
 		virtual TestThreaded * clone() const override {
-			return new TestThreaded(minThreads(), maxThreads(), getMax<0>());
+			return new TestThreaded(minThreads(), maxThreads(), getMaxValue<0>());
 		}
 
 		virtual void init(unsigned) final override {
