@@ -14,18 +14,14 @@
 
 namespace arraywalk {
 
-	class ArrayWalkFactory: public adhd::BenchmarkFactory {
-		public:
-			virtual adhd::Benchmark * makeBenchmark(const adhd::Config & cfg) const override;
-	};
-
 	template <typename INDEX_T>
-		class ArrayWalk: public adhd::SimpleBenchmark {
+		class ArrayWalk: public adhd::SingleBenchmark {
 			public:
 				ArrayWalk(const Config & cfg = Config());
 				~ArrayWalk();
 
-				virtual void runBare(adhd::timing_cb tcb) override;
+				virtual void run() final override;
+				virtual ArrayWalk * clone() const final override;
 
 			private:
 				Config config;

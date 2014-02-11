@@ -23,10 +23,6 @@ namespace arraywalk {
 		td(_td)
 	{}
 
-	Timings * Timings::clone() const {
-		return new Timings(*this);
-	}
-
 	ostream & Timings::formatHeader(ostream & out) const {
 		out << "thread#, cycles, reads, elements, element size, instruction streams" << endl;
 		return out;

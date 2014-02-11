@@ -20,7 +20,6 @@ namespace arraywalk {
 	class Timings: public adhd::Timings {
 		public:
 			Timings(const TimingData & td);
-			virtual Timings * clone() const override;
 			virtual std::ostream & formatHeader(std::ostream & out) const override;
 			virtual std::ostream & formatCSV(std::ostream & out) const override;
 			virtual std::ostream & formatHuman(std::ostream & out) const override;

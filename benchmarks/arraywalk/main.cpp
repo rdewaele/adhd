@@ -17,13 +17,16 @@ using namespace arraywalk;
 template <typename INDEX_T>
 static void run_test(ofstream & logfile, unsigned trial) {
 	try {
-		const adhd::BenchmarkFactory & bmf = ArrayWalkFactory();
-		auto test = bmf.makeBenchmark(Config());
-		test->run([&logfile, &trial] (const adhd::Timings & timings) {
+		//const adhd::BenchmarkFactory & bmf = ArrayWalkFactory();
+		//auto test = bmf.makeBenchmark(Config());
+		ArrayWalk<INDEX_T>(Config()).run();
+		/*
+		test.run([&logfile, &trial] (const adhd::Timings & timings) {
 				logfile << trial << "," << timings.asCSV();
 				cout << timings.asHuman() << endl;
 				});
 		delete test;
+		*/
 	}
 	catch (const length_error &) { /* deliberately ignored */ }
 }

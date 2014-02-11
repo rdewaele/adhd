@@ -24,7 +24,7 @@ ifeq ($(CXX),icpc)
 	CXXFLAGS += -xHost
 endif
 
-CXXFLAGS := -std=c++11 -W -Wall -Wextra -pedantic \
+CXXFLAGS := -std=c++11 -W -Wall -Wextra -pedantic -pthread \
 	$(EXTRA_WARNINGS) \
 	$(CXXFLAGS) \
 	-g -O3

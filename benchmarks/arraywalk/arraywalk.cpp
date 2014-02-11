@@ -37,11 +37,6 @@ namespace arraywalk {
 	static const char NOT_INITIALIZED[] =
 		"Default-constructed walking array was not initialized.";
 
-	adhd::Benchmark * ArrayWalkFactory::makeBenchmark(const adhd::Config & cfg) const {
-		// TODO: use actual config passed here, instead of using default config
-		return new ArrayWalk<uint64_t>(Config());
-	}
-
 	template <typename INDEX_T>
 	ArrayWalk<INDEX_T>::ArrayWalk(const Config & cfg):
 		config(cfg),
@@ -57,7 +52,7 @@ namespace arraywalk {
 	}
 
 	template <typename INDEX_T>
-	void ArrayWalk<INDEX_T>::runBare(adhd::timing_cb tcb)
+	void ArrayWalk<INDEX_T>::run()
 	{
 		for (size_t size = config.size_min;
 				size <= config.size_max;
@@ -115,10 +110,17 @@ namespace arraywalk {
 					++istream)
 			{
 				timedwalk_loc(istream, config.MiB, cycles, reads);
-				tcb(Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }));
+				//tcb(Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }));
+				// TODO
+				cout << Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }).asHuman();
 			}
 		}
 	}
+
+	template <typename INDEX_T>
+		ArrayWalk<INDEX_T> * ArrayWalk<INDEX_T>::clone() const {
+			return new ArrayWalk<INDEX_T>(config);
+		}
 
 	// the random library does not recognise __uint128_t as an integral type: specialize
 	template <>
