@@ -22,11 +22,11 @@ namespace arraywalk {
 
 				virtual ArrayWalk * clone() const final override;
 
-				//virtual void init(unsigned threadNum) final override;
-				//virtual void ready(unsigned threadNum) final override;
-				//virtual void set(unsigned threadNum) final override;
+				virtual void init(unsigned threadNum) final override;
+				virtual void ready(unsigned threadNum) final override;
+				virtual void set(unsigned threadNum) final override;
 				virtual void go(unsigned threadNum) final override;
-				//virtual void finish(unsigned threadNum) final override;
+				virtual void finish(unsigned threadNum) final override;
 
 			private:
 				Config config;

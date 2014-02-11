@@ -54,6 +54,18 @@ namespace arraywalk {
 	}
 
 	template <typename INDEX_T>
+		void ArrayWalk<INDEX_T>::init(unsigned threadNum) {
+		}
+
+	template <typename INDEX_T>
+		void ArrayWalk<INDEX_T>::ready(unsigned threadNum) {
+		}
+
+	template <typename INDEX_T>
+		void ArrayWalk<INDEX_T>::set(unsigned threadNum) {
+		}
+
+	template <typename INDEX_T>
 	void ArrayWalk<INDEX_T>::go(unsigned threadNum)
 	{
 		for (size_t size = config.size_min;
@@ -118,6 +130,10 @@ namespace arraywalk {
 			}
 		}
 	}
+
+	template <typename INDEX_T>
+		void ArrayWalk<INDEX_T>::finish(unsigned threadNum) {
+		}
 
 	template <typename INDEX_T>
 		ArrayWalk<INDEX_T> * ArrayWalk<INDEX_T>::clone() const {
