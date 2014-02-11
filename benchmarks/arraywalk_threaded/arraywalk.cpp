@@ -40,6 +40,7 @@ namespace arraywalk {
 
 	template <typename INDEX_T>
 	ArrayWalk<INDEX_T>::ArrayWalk(const Config & cfg):
+		ThreadedBenchmark(1, 4),
 		config(cfg),
 		length(0),
 		arraymem(NULL),
@@ -53,7 +54,7 @@ namespace arraywalk {
 	}
 
 	template <typename INDEX_T>
-	void ArrayWalk<INDEX_T>::run(timing_cb tcb)
+	void ArrayWalk<INDEX_T>::go(unsigned threadNum)
 	{
 		for (size_t size = config.size_min;
 				size <= config.size_max;
@@ -111,7 +112,9 @@ namespace arraywalk {
 					++istream)
 			{
 				timedwalk_loc(istream, config.MiB, cycles, reads);
-				tcb(Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }));
+				//tcb(Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }));
+				//TODO
+				cout << Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }).asHuman();
 			}
 		}
 	}

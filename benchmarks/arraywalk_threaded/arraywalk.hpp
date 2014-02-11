@@ -15,13 +15,18 @@
 namespace arraywalk {
 
 	template <typename INDEX_T>
-		class ArrayWalk: public adhd::SingleBenchmark {
+		class ArrayWalk: public adhd::ThreadedBenchmark {
 			public:
 				ArrayWalk(const Config & cfg = Config());
 				~ArrayWalk();
 
-				virtual void run(adhd::timing_cb) final override;
 				virtual ArrayWalk * clone() const final override;
+
+				//virtual void init(unsigned threadNum) final override;
+				//virtual void ready(unsigned threadNum) final override;
+				//virtual void set(unsigned threadNum) final override;
+				virtual void go(unsigned threadNum) final override;
+				//virtual void finish(unsigned threadNum) final override;
 
 			private:
 				Config config;
