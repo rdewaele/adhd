@@ -55,24 +55,12 @@ namespace arraywalk {
 
 	template <typename INDEX_T>
 		void ArrayWalk<INDEX_T>::init(unsigned threadNum) {
-		}
+			// for (size_t size = config.size_min;
+			//size <= config.size_max;
+			//size = size * config.size_mul + config.size_inc)
 
-	template <typename INDEX_T>
-		void ArrayWalk<INDEX_T>::ready(unsigned threadNum) {
-		}
-
-	template <typename INDEX_T>
-		void ArrayWalk<INDEX_T>::set(unsigned threadNum) {
-		}
-
-	template <typename INDEX_T>
-	void ArrayWalk<INDEX_T>::go(unsigned threadNum)
-	{
-		for (size_t size = config.size_min;
-				size <= config.size_max;
-				size = size * config.size_mul + config.size_inc)
-		{
-			length = size / sizeof(INDEX_T);
+			//length = size / sizeof(INDEX_T);
+			length = config.size_min / sizeof(INDEX_T);
 
 			/* icpc warns about implicit conversion, which is rather odd when doing
 			 * an explicit conversion. Furthermore, using a function- or c-style cast
@@ -116,18 +104,31 @@ namespace arraywalk {
 				case DECREASING: decreasing(); break;
 			}
 
-			uint64_t cycles;
-			uint64_t reads;
-			// loop through data-invariant tests
-			for (unsigned istream = config.istream_min;
-					istream <= config.istream_max;
-					++istream)
-			{
-				timedwalk_loc(istream, config.MiB, cycles, reads);
-				//tcb(Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }));
-				//TODO
-				cout << Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }).asHuman();
-			}
+
+		}
+
+	template <typename INDEX_T>
+		void ArrayWalk<INDEX_T>::ready(unsigned threadNum) {
+		}
+
+	template <typename INDEX_T>
+		void ArrayWalk<INDEX_T>::set(unsigned threadNum) {
+		}
+
+	template <typename INDEX_T>
+	void ArrayWalk<INDEX_T>::go(unsigned threadNum)
+	{
+		uint64_t cycles;
+		uint64_t reads;
+		// loop through data-invariant tests
+		for (unsigned istream = config.istream_min;
+				istream <= config.istream_max;
+				++istream)
+		{
+			timedwalk_loc(istream, config.MiB, cycles, reads);
+			//tcb(Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }));
+			//TODO
+			cout << Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }).asHuman();
 		}
 	}
 

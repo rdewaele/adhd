@@ -17,7 +17,8 @@ using namespace arraywalk;
 template <typename INDEX_T>
 static void run_test(ofstream & logfile, unsigned trial) {
 	try {
-		ArrayWalk<INDEX_T>(Config()).run(
+		auto && aw = ArrayWalk<INDEX_T>(Config());
+		runBenchmark(aw,
 				[&logfile, &trial] (const adhd::Timings & timings) {
 				logfile << trial << "," << timings.asCSV();
 				cout << timings.asHuman() << endl;
