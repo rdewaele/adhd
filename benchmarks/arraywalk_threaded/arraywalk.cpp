@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <exception>
 #include <iostream>
+#include <mutex>
 #include <random>
 #include <stdexcept>
 #include <type_traits>
@@ -122,10 +123,14 @@ namespace arraywalk {
 		uint64_t reads;
 		const unsigned istream = Config::currentIStream();
 
+		go_wait_start();
 		timedwalk_loc(istream, Config::readMiB, cycles, reads);
+		go_wait_end();
 		//tcb(Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }));
 		//TODO
+		auto && ul = unique_lock<mutex>(print_mutex);
 		cout << Timings(TimingData { threadNum, cycles, reads, length, sizeof(INDEX_T), istream }).asHuman();
+		ul.unlock();
 	}
 
 	template <typename INDEX_T>

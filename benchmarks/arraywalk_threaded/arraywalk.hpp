@@ -7,6 +7,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <mutex>
 #include <random>
 
 #define TIMEDWALK_LOC_DEC(NUM) \
@@ -42,6 +43,8 @@ namespace arraywalk {
 				size_t length;
 				INDEX_T * arraymem;
 				INDEX_T * array;
+
+				std::mutex print_mutex;
 
 				INDEX_T timedwalk_loc(unsigned locs, uint_fast32_t MiB,
 						uint64_t & cycles, uint64_t & reads);
