@@ -163,12 +163,12 @@ namespace adhd {
 					}
 
 				template <long unsigned int N>
-					typename std::tuple_element<N, Fields>::type::type getMin() const {
-						return std::get<N>(values).min;
+					typename std::tuple_element<N, Fields>::type::type getMinValue() const {
+						return std::get<N>(values).minValue;
 					}
 
 				template <long unsigned int N>
-					typename std::tuple_element<N, Fields>::type::type getMax() const {
+					typename std::tuple_element<N, Fields>::type::type getMaxValue() const {
 						return std::get<N>(values).maxValue;
 					}
 
