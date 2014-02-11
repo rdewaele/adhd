@@ -47,7 +47,7 @@ namespace adhd {
 			virtual ~ThreadedBenchmark();
 
 			// BenchmarkInterface
-			virtual void run(timing_cb) override;
+			virtual void run(timing_cb) final override;
 			virtual ThreadedBenchmark * clone() const = 0;
 
 			// ThreadedBenchmark
