@@ -92,10 +92,12 @@ namespace adhd {
 				virtual Range * clone() const override { return new Range(*this); }
 
 				virtual void next() override {
-					reset = (current >= maxValue) || (++current > maxValue);
+					reset = (current >= maxValue) || (increment(current) > maxValue);
 					if (reset)
 						current = minValue;
 				}
+
+				virtual inline T increment(T & value) { return ++value; }
 
 				bool operator==(const Range & rhs) const {
 					return minValue == rhs.minValue
