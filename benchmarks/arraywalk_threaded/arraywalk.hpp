@@ -15,7 +15,7 @@
 namespace arraywalk {
 
 	template <typename INDEX_T>
-		class ArrayWalk: public adhd::ThreadedBenchmark {
+		class ArrayWalk: public adhd::ThreadedBenchmark, public Config {
 			public:
 				ArrayWalk(const Config & cfg = Config());
 				~ArrayWalk();
@@ -28,8 +28,17 @@ namespace arraywalk {
 				virtual void go(unsigned threadNum) final override;
 				virtual void finish(unsigned threadNum) final override;
 
+				virtual void next() final override;
+
+				virtual bool atMin() const final override;
+				virtual bool atMax() const final override;
+				virtual void gotoBegin() final override;
+				virtual void gotoEnd() final override;
+
+				bool operator==(const ArrayWalk &) const;
+				bool operator!=(const ArrayWalk &) const;
+
 			private:
-				Config config;
 				size_t length;
 				INDEX_T * arraymem;
 				INDEX_T * array;

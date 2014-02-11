@@ -41,7 +41,7 @@ namespace arraywalk {
 	template <typename INDEX_T>
 	ArrayWalk<INDEX_T>::ArrayWalk(const Config & cfg):
 		ThreadedBenchmark(cfg.threads_min, cfg.threads_max),
-		config(cfg),
+		Config(cfg),
 		length(0),
 		arraymem(NULL),
 		array(NULL)
@@ -54,13 +54,13 @@ namespace arraywalk {
 	}
 
 	template <typename INDEX_T>
-		void ArrayWalk<INDEX_T>::init(unsigned threadNum) {
+		void ArrayWalk<INDEX_T>::init(unsigned /*threadNum*/) {
 			// for (size_t size = config.size_min;
 			//size <= config.size_max;
 			//size = size * config.size_mul + config.size_inc)
 
 			//length = size / sizeof(INDEX_T);
-			length = config.size_min / sizeof(INDEX_T);
+			length = Config::minSize() / sizeof(INDEX_T);
 
 			/* icpc warns about implicit conversion, which is rather odd when doing
 			 * an explicit conversion. Furthermore, using a function- or c-style cast
@@ -86,19 +86,19 @@ namespace arraywalk {
 			if (length < 4)
 				throw length_error(NEED_FOUR_ELEMENTS);
 
-			if (!util::isPowerOfTwo<size_t>(config.align))
+			if (!util::isPowerOfTwo<size_t>(Config::align))
 				throw domain_error(NOT_POW2_ALIGN);
 
 			// allocate with overhead to cater for later alignment
 			// arraymem must be NULL or previously allocated by this function
-			const size_t overhead = 1 + config.align / sizeof(INDEX_T);
+			const size_t overhead = 1 + Config::align / sizeof(INDEX_T);
 			delete[] arraymem;
 			arraymem = new INDEX_T[length + overhead];
 			const uintptr_t aligned =
-				(reinterpret_cast<uintptr_t>(arraymem) + config.align) & (~(config.align - 1));
+				(reinterpret_cast<uintptr_t>(arraymem) + Config::align) & (~(Config::align - 1));
 			array = reinterpret_cast<INDEX_T *>(aligned);
 
-			switch (config.ptrn) {
+			switch (Config::ptrn) {
 				case RANDOM: random(); break;
 				case INCREASING: increasing(); break;
 				case DECREASING: decreasing(); break;
@@ -108,11 +108,11 @@ namespace arraywalk {
 		}
 
 	template <typename INDEX_T>
-		void ArrayWalk<INDEX_T>::ready(unsigned threadNum) {
+		void ArrayWalk<INDEX_T>::ready(unsigned /*threadNum*/) {
 		}
 
 	template <typename INDEX_T>
-		void ArrayWalk<INDEX_T>::set(unsigned threadNum) {
+		void ArrayWalk<INDEX_T>::set(unsigned /*threadNum*/) {
 		}
 
 	template <typename INDEX_T>
@@ -120,25 +120,62 @@ namespace arraywalk {
 	{
 		uint64_t cycles;
 		uint64_t reads;
-		// loop through data-invariant tests
-		for (unsigned istream = config.istream_min;
-				istream <= config.istream_max;
-				++istream)
-		{
-			timedwalk_loc(istream, config.MiB, cycles, reads);
-			//tcb(Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }));
-			//TODO
-			cout << Timings(TimingData { threadNum, cycles, reads, length, sizeof(INDEX_T), istream }).asHuman();
-		}
+		const unsigned istream = Config::currentIStream();
+
+		timedwalk_loc(istream, Config::readMiB, cycles, reads);
+		//tcb(Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }));
+		//TODO
+		cout << Timings(TimingData { threadNum, cycles, reads, length, sizeof(INDEX_T), istream }).asHuman();
 	}
 
 	template <typename INDEX_T>
-		void ArrayWalk<INDEX_T>::finish(unsigned threadNum) {
+		void ArrayWalk<INDEX_T>::finish(unsigned /*threadNum*/) {
 		}
 
 	template <typename INDEX_T>
 		ArrayWalk<INDEX_T> * ArrayWalk<INDEX_T>::clone() const {
-			return new ArrayWalk<INDEX_T>(config);
+			return new ArrayWalk<INDEX_T>(static_cast<const Config &>(*this));
+		}
+
+	template <typename INDEX_T>
+		void ArrayWalk<INDEX_T>::next() {
+			Config::next();
+			if (Config::atMin())
+				ThreadedBenchmark::next();
+		}
+
+	template <typename INDEX_T>
+		bool ArrayWalk<INDEX_T>::atMin() const {
+			return ThreadedBenchmark::atMin() && Config::atMin();
+		}
+
+	template <typename INDEX_T>
+		bool ArrayWalk<INDEX_T>::atMax() const {
+			return ThreadedBenchmark::atMax() && Config::atMax();
+		}
+
+	template <typename INDEX_T>
+		void ArrayWalk<INDEX_T>::gotoBegin() {
+			ThreadedBenchmark::gotoBegin();
+			Config::gotoBegin();
+		}
+
+	template <typename INDEX_T>
+		void ArrayWalk<INDEX_T>::gotoEnd() {
+			ThreadedBenchmark::gotoEnd();
+			Config::gotoEnd();
+		}
+
+	template <typename INDEX_T>
+		bool ArrayWalk<INDEX_T>::operator==(const ArrayWalk<INDEX_T> & rhs) const {
+			return static_cast<const ThreadedBenchmark &>(*this) == rhs
+				&& static_cast<const Config &>(*this) == rhs;
+		}
+
+	template <typename INDEX_T>
+		bool ArrayWalk<INDEX_T>::operator!=(const ArrayWalk<INDEX_T> & rhs) const {
+			return static_cast<const ThreadedBenchmark &>(*this) != rhs
+				|| static_cast<const Config &>(*this) != rhs;
 		}
 
 	// the random library does not recognise __uint128_t as an integral type: specialize

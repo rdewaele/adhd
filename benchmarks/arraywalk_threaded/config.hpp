@@ -16,7 +16,9 @@ namespace arraywalk {
 		static constexpr unsigned threads_max = 4;
 
 		static constexpr size_t size_min = 1 << 12;
-		static constexpr size_t size_max = 1 << 14;
+		// TODO: extend Range implementation so it can cope with custom increments
+		//static constexpr size_t size_max = 1 << 14;
+		static constexpr size_t size_max = 1 << 12;
 		static constexpr unsigned size_mul = 1;
 		static constexpr size_t size_inc = 1 << 12;
 
@@ -30,7 +32,7 @@ namespace arraywalk {
 		static constexpr uint_fast32_t MiB = 1 << 8;
 	}
 
-	struct Config {
+	struct Config: public adhd::RangeSet<size_t, unsigned> {
 		Config(
 				unsigned _threads_min = defaults::threads_min,
 				unsigned _threads_max = defaults::threads_max,
@@ -44,16 +46,20 @@ namespace arraywalk {
 				pattern _ptrn         = defaults::ptrn,
 				uint_fast32_t _MiB    = defaults::MiB);
 
+		size_t inline minSize() const { return getMinValue<0>(); }
+		size_t inline maxSize() const { return getMaxValue<0>(); }
+		size_t inline currentSize() const { return getValue<0>(); }
+
+		unsigned inline minIStream() const { return getMinValue<1>(); }
+		unsigned inline maxIStream() const { return getMaxValue<1>(); }
+		unsigned inline currentIStream() const { return getValue<1>(); }
+
 		unsigned threads_min;
 		unsigned threads_max;
-		size_t size_min;
-		size_t size_max;
 		unsigned size_mul;
 		size_t size_inc;
-		unsigned istream_min;
-		unsigned istream_max;
 		uintptr_t align;
 		pattern ptrn;
-		uint_fast32_t MiB;
+		uint_fast32_t readMiB;
 	};
 }
