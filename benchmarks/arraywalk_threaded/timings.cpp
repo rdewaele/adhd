@@ -29,11 +29,12 @@ namespace arraywalk {
 	}
 
 	ostream & Timings::formatCSV(ostream & out) const {
-		return sequence(out, td.cycles, td.reads, td.length, td.idx_size, td.istreams);
+		return sequence(out, td.threadNum, td.cycles, td.reads, td.length, td.idx_size, td.istreams);
 	}
 
 	ostream & Timings::formatHuman(ostream & out) const {
-		out << td.length << " elements x " << Bytes(td.idx_size) << " = "
+		out << "thread " << td.threadNum << " | "
+			<< td.length << " elements x " << Bytes(td.idx_size) << " = "
 			<< Bytes(td.length * td.idx_size) << " | " << td.istreams
 			<< " instruction streams" << endl;
 		out << "cycles: " << td.cycles << " | ";

@@ -9,6 +9,7 @@
 namespace arraywalk {
 
 	struct TimingData {
+		unsigned threadNum;
 		uint64_t cycles;
 		uint64_t reads;
 		size_t length;

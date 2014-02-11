@@ -128,7 +128,7 @@ namespace arraywalk {
 			timedwalk_loc(istream, config.MiB, cycles, reads);
 			//tcb(Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }));
 			//TODO
-			cout << Timings(TimingData { cycles, reads, length, sizeof(INDEX_T), istream }).asHuman();
+			cout << Timings(TimingData { threadNum, cycles, reads, length, sizeof(INDEX_T), istream }).asHuman();
 		}
 	}
 
