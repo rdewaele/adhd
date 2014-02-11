@@ -40,7 +40,7 @@ namespace arraywalk {
 
 	template <typename INDEX_T>
 	ArrayWalk<INDEX_T>::ArrayWalk(const Config & cfg):
-		ThreadedBenchmark(1, 4),
+		ThreadedBenchmark(cfg.threads_min, cfg.threads_max),
 		config(cfg),
 		length(0),
 		arraymem(NULL),

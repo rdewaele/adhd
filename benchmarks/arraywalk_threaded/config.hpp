@@ -12,6 +12,9 @@ namespace arraywalk {
 	enum pattern { RANDOM, INCREASING, DECREASING };
 
 	namespace defaults {
+		static constexpr unsigned threads_min = 1;
+		static constexpr unsigned threads_max = 4;
+
 		static constexpr size_t size_min = 1 << 12;
 		static constexpr size_t size_max = 1 << 14;
 		static constexpr unsigned size_mul = 1;
@@ -29,6 +32,8 @@ namespace arraywalk {
 
 	struct Config {
 		Config(
+				unsigned _threads_min = defaults::threads_min,
+				unsigned _threads_max = defaults::threads_max,
 				size_t _size_min      = defaults::size_min,
 				size_t _size_max      = defaults::size_max,
 				unsigned _size_mul    = defaults::size_mul,
@@ -39,6 +44,8 @@ namespace arraywalk {
 				pattern _ptrn         = defaults::ptrn,
 				uint_fast32_t _MiB    = defaults::MiB);
 
+		unsigned threads_min;
+		unsigned threads_max;
 		size_t size_min;
 		size_t size_max;
 		unsigned size_mul;
