@@ -39,8 +39,7 @@ namespace arraywalk {
 			{}
 
 			virtual inline size_t increment(size_t & value) override {
-				std::cerr << "HALLO DAAR" << std::endl;
-				return value * mulval + incval;
+				return value = value * mulval + incval;
 			}
 
 		private:
@@ -48,7 +47,7 @@ namespace arraywalk {
 			const size_t incval;
 	};
 
-	struct Config: public adhd::RangeSet<size_t, unsigned> {
+	struct Config: public adhd::RangeSet<ArraySize, adhd::Range<unsigned>> {
 
 		Config(
 				unsigned _threads_min = defaults::threads_min,

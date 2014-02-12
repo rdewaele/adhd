@@ -146,9 +146,9 @@ namespace adhd {
 		class RangeSet: public virtual RangeInterface {
 			public:
 				typedef RangeSet<TS ...> type;
-				typedef std::tuple<Range<TS> ...> Fields;
+				typedef std::tuple<TS ...> Fields;
 
-				RangeSet(const Range<TS> & ... args): values(std::make_tuple(args ...)) {}
+				RangeSet(const TS & ... args): values(std::make_tuple(args ...)) {}
 				RangeSet(const Fields & f): values(f) {}
 				RangeSet(const RangeSet & c): values(c.values) {}
 

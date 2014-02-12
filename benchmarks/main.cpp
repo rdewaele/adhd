@@ -106,7 +106,7 @@ class TestSingle: public SingleBenchmark {
 // THREADED
 //
 
-class TestThreaded: public ThreadedBenchmark, public RangeSet<unsigned, unsigned> {
+class TestThreaded: public ThreadedBenchmark, public RangeSet<Range<unsigned>, Range<unsigned>> {
 	public:
 		TestThreaded(unsigned min, unsigned max, unsigned iters)
 			: ThreadedBenchmark(min, max),

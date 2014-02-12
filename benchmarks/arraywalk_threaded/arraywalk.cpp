@@ -56,12 +56,7 @@ namespace arraywalk {
 
 	template <typename INDEX_T>
 		void ArrayWalk<INDEX_T>::init(unsigned /*threadNum*/) {
-			// for (size_t size = config.size_min;
-			//size <= config.size_max;
-			//size = size * config.size_mul + config.size_inc)
-
-			//length = size / sizeof(INDEX_T);
-			length = Config::minSize() / sizeof(INDEX_T);
+			length = Config::currentSize() / sizeof(INDEX_T);
 
 			/* icpc warns about implicit conversion, which is rather odd when doing
 			 * an explicit conversion. Furthermore, using a function- or c-style cast
