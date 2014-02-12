@@ -16,10 +16,13 @@ using namespace arraywalk;
 // may throw domain_error when requested alignment is not a power of two
 template <typename INDEX_T>
 static void run_test(ofstream & logfile, unsigned trial) {
+	// TODO: think of a less dirty way of printing a timings CSV header
+	static bool wroteHeader = false;
 	try {
 		auto && aw = ArrayWalk<INDEX_T>(Config());
 		runBenchmark(aw,
 				[&logfile, &trial] (const adhd::Timings & timings) {
+				if (!wroteHeader) { timings.formatHeader(logfile); wroteHeader = true; }
 				logfile << trial << "," << timings.asCSV();
 				cout << timings.asHuman() << endl;
 				});
