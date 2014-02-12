@@ -5,6 +5,7 @@
 
 #include <atomic>
 #include <iterator>
+#include <mutex>
 #include <pthread.h>
 #include <vector>
 
@@ -66,6 +67,11 @@ namespace adhd {
 			};
 
 		protected:
+			// timing_callback passes its argument to the timing_cb that was supplied
+			// to run(timing_cb), and makes sure (by using a mutex) that no callback
+			// executions overlap
+			timing_cb_t timing_callback;
+
 			// placeholders: no pure virtual methods to allow children to override no
 			// more methods than they need, leaving only go() as abstract method
 			virtual void init(unsigned threadNum);
@@ -84,6 +90,9 @@ namespace adhd {
 			inline void go_wait_end() { pthread_barrier_wait(&go_wait_b); }
 
 		private:
+			std::mutex callback_mutex;
+			timing_cb tcb;
+
 			void runThread(unsigned threadNum);
 			void init_barriers();
 			void destroy_barriers();

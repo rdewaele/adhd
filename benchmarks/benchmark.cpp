@@ -3,6 +3,7 @@
 #include <cstring>
 #include <stdexcept>
 #include <system_error>
+#include <mutex>
 
 #include <pthread.h>
 #include <unistd.h> // linux setaffinity: sysconf
@@ -28,6 +29,8 @@ namespace adhd {
 
 	ThreadedBenchmark::ThreadedBenchmark(unsigned min, unsigned max):
 		Range(min, max),
+		callback_mutex(),
+		tcb(),
 		pthreadIDs(max),
 		bmThreads(max),
 		stopThreads(false),
@@ -101,12 +104,17 @@ namespace adhd {
 		pthread_barrier_wait(b);
 	}
 
-	void ThreadedBenchmark::run(timing_cb) {
-		// start active threads and block until all threads finished executing
-		// their init/ready/set/go/finish routine
+	// threads are at a barrier when this method is called (or it's a bug)
+	void ThreadedBenchmark::run(timing_cb newtcb) {
+		// shared-memory assignment is OK because of this method's precondition
+		tcb = newtcb;
+		// join threads only if #threads changed (i.e. don't force)
 		joinThreads(false);
+		// if needed, spawn threads
 		spawnThreads();
+		// unblock all threads waiting to execute
 		startWaitingThreads(&runThreads_entry_b);
+		// block this method until all threads finished executing
 		startWaitingThreads(&runThreads_exit_b);
 	}
 
@@ -179,6 +187,13 @@ namespace adhd {
 			//break;
 			startWaitingThreads(&runThreads_exit_b);
 		}
+	}
+
+	// timing_callback serializes all calls to the callback supplied to run()
+	void ThreadedBenchmark::timing_callback(const Timings & t) {
+		auto && ul = unique_lock<mutex>(callback_mutex);
+		tcb(t);
+		ul.unlock();
 	}
 
 	// placeholders: no pure virtual methods to allow children to override no
