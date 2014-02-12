@@ -24,17 +24,23 @@ namespace arraywalk {
 	{}
 
 	ostream & Timings::formatHeader(ostream & out) const {
-		out << "thread#, cycles, reads, elements, element size, instruction streams" << endl;
+		out << "total #threads, thread#, cycles, reads, elements, "
+			"element size, instruction streams" << endl;
 		return out;
 	}
 
 	ostream & Timings::formatCSV(ostream & out) const {
-		return sequence(out, td.threadNum, td.cycles, td.reads, td.length, td.idx_size, td.istreams);
+		return sequence(
+				out, td.totalThreads, td.threadNum, td.cycles, td.reads, td.length,
+				td.idx_size, td.istreams
+				);
 	}
 
 	ostream & Timings::formatHuman(ostream & out) const {
-		out << "thread " << td.threadNum << " | "
-			<< td.length << " elements x " << Bytes(td.idx_size) << " = "
+		if (td.totalThreads > 1)
+			out << td.totalThreads << " threads; #" << td.threadNum << " | ";
+
+		out << td.length << " elements x " << Bytes(td.idx_size) << " = "
 			<< Bytes(td.length * td.idx_size) << " | " << td.istreams
 			<< " instruction streams" << endl;
 		out << "cycles: " << td.cycles << " | ";

@@ -120,7 +120,10 @@ namespace arraywalk {
 		go_wait_start();
 		timedwalk_loc(istream, Config::readMiB, cycles, reads);
 		go_wait_end();
-		timing_callback(Timings(TimingData { threadNum, cycles, reads, length, sizeof(INDEX_T), istream }));
+		timing_callback(Timings(TimingData {
+					numThreads(), threadNum,
+					cycles, reads, length, sizeof(INDEX_T), istream
+					}));
 	}
 
 	template <typename INDEX_T>
