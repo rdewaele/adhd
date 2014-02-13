@@ -14,7 +14,7 @@ namespace adhd {
 	/****************************************************************************/
 	// SingleBenchmark
 
-	SingleBenchmark::SingleBenchmark(): Range(0) {}
+	SingleBenchmark::SingleBenchmark(): AffineStepper(0) {}
 
 	/****************************************************************************/
 	// ThreadedBenchmark
@@ -28,7 +28,7 @@ namespace adhd {
 	static auto threadMain = reinterpret_cast<void * (*)(void *)>(c_thread_main);
 
 	ThreadedBenchmark::ThreadedBenchmark(unsigned min, unsigned max):
-		Range(min, max),
+		AffineStepper(min, max),
 		callback_mutex(),
 		tcb(),
 		pthreadIDs(max),
@@ -153,7 +153,7 @@ namespace adhd {
 	}
 
 	ostream & operator<<(std::ostream & os, const ThreadedBenchmark & tb) {
-		return os << "ThreadedBenchmark: " << static_cast<const Range<unsigned> &>(tb);
+		return os << "ThreadedBenchmark: " << static_cast<const AffineStepper<unsigned> &>(tb);
 	}
 
 	void ThreadedBenchmark::runThread(unsigned threadNum) {

@@ -34,14 +34,14 @@ namespace adhd {
 		}
 
 	// One-shot benchmark: no variants
-	class SingleBenchmark: public virtual BenchmarkInterface, public Range<unsigned> {
+	class SingleBenchmark: public virtual BenchmarkInterface, public AffineStepper<unsigned> {
 		public:
 			SingleBenchmark();
 			virtual SingleBenchmark * clone() const override = 0;
 	};
 
 	// Threaded benchmark: run a number of threads as simultaneously as possible
-	class ThreadedBenchmark: public virtual BenchmarkInterface, public Range<unsigned> {
+	class ThreadedBenchmark: public virtual BenchmarkInterface, public AffineStepper<unsigned> {
 		public:
 			ThreadedBenchmark(unsigned minThreads, unsigned maxThreads);
 			ThreadedBenchmark(const ThreadedBenchmark &) = delete;

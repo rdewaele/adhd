@@ -80,16 +80,18 @@ namespace adhd {
 	// Two Range instances are considered equal when all fields are equal:
 	// min, max, and current.
 	template <typename T>
-		class Range: public virtual RangeInterface {
+		class AffineStepper: public virtual RangeInterface {
 			public:
 				typedef T type;
 
-				Range(T constant): Range(constant, constant) {}
-				Range(T min, T max)
-					: Range(min < max ? min : max, min < max ? max : min, false)
+				AffineStepper(T constant): AffineStepper(constant, constant) {}
+				AffineStepper(T min, T max, T mul = 1, T inc = 1)
+					: AffineStepper(min < max ? min : max, min < max ? max : min, mul, inc, false)
 					{}
 
-				virtual Range * clone() const override { return new Range(*this); }
+				inline T increment(T & value) {
+					return value = mulValue * value + incValue;
+				}
 
 				virtual void next() override {
 					reset = (current >= maxValue) || (increment(current) > maxValue);
@@ -97,20 +99,22 @@ namespace adhd {
 						current = minValue;
 				}
 
-				virtual inline T increment(T & value) { return ++value; }
+				virtual AffineStepper * clone() const override { return new AffineStepper(*this); }
 
-				bool operator==(const Range & rhs) const {
+				bool operator==(const AffineStepper & rhs) const {
 					return minValue == rhs.minValue
 						&& maxValue == rhs.maxValue
+						&& mulValue == rhs.mulValue
+						&& incValue == rhs.incValue
 						&& current == rhs.current
 						&& reset == rhs.reset;
 				}
 
-				bool operator!=(const Range & rhs) const {
-					return !(*this == rhs);
+				bool operator!=(const AffineStepper & rhs) const {
+					return !operator==(rhs);
 				}
 
-				const Range & operator *() const { return *this; }
+				const AffineStepper & operator *() const { return *this; }
 
 				T getValue() const { return current; }
 
@@ -120,17 +124,20 @@ namespace adhd {
 				virtual void gotoBegin() override { current = minValue; reset = false; }
 				virtual void gotoEnd() override { current = minValue; reset = true; }
 
-				friend inline std::ostream & operator<<(std::ostream & os, const Range & r) {
+				friend inline std::ostream & operator<<(std::ostream & os, const AffineStepper & r) {
 					return os << "[" << r.minValue << "," << r.maxValue << "]" << ":" << r.current
 						<< (r.reset ? " (reset)" : "");
 				}
 
 				const T minValue;
 				const T maxValue;
+				const T mulValue;
+				const T incValue;
 
 			private:
-				Range(T min, T max, bool _reset)
-					: minValue(min), maxValue(max), current(min), reset(_reset)
+				AffineStepper(T min, T max, T mul, T inc, bool _reset)
+					: minValue(min), maxValue(max), mulValue(mul), incValue(inc),
+					current(min), reset(_reset)
 				{}
 
 				T current;

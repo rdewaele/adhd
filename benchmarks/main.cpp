@@ -106,11 +106,11 @@ class TestSingle: public SingleBenchmark {
 // THREADED
 //
 
-class TestThreaded: public ThreadedBenchmark, public RangeSet<Range<unsigned>, Range<unsigned>> {
+class TestThreaded: public ThreadedBenchmark, public RangeSet<AffineStepper<unsigned>, AffineStepper<unsigned>> {
 	public:
 		TestThreaded(unsigned min, unsigned max, unsigned iters)
 			: ThreadedBenchmark(min, max),
-			RangeSet(Range<unsigned>(0, iters), Range<unsigned>(1, 2)),
+			RangeSet(AffineStepper<unsigned>(0, iters), AffineStepper<unsigned>(1, 2)),
 			shared(nullptr),
 			spread()
 	{}
