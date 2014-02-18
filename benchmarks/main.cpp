@@ -202,6 +202,18 @@ class TestThreaded: public ThreadedBenchmark, public RangeSet<AffineStepper<unsi
 		SpreadTimings spread;
 };
 
+enum class Count { ONE=111, TWO=1, THREE=11 };
+ostream & operator<<(ostream & os, const Count & c) {
+	const char * str;
+	switch (c) {
+		case Count::ONE: str = "ONE"; break;
+		case Count::TWO: str = "TWO"; break;
+		case Count::THREE: str = "THREE"; break;
+		default: str = "<unknown>"; break;
+	}
+	return os << str;
+}
+
 int main(int argc, char * argv[]) {
 	// default to 16 threads max
 	unsigned nthreads = 16;
@@ -217,6 +229,12 @@ int main(int argc, char * argv[]) {
 		case 2: // argument: expected number of threads
 			nthreads = (unsigned)atoi(argv[1]);
 			break;
+	}
+
+	{ // count down using an explicit stepper
+		auto stepper = ExplicitStepper<Count>{ Count::THREE, Count::TWO, Count::ONE };
+		for (auto && es: stepper)
+			cout << es << endl;
 	}
 
 	timing_cb tcb = [] (const Timings &) {};
