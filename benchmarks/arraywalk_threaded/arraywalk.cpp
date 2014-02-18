@@ -95,9 +95,9 @@ namespace arraywalk {
 			array = reinterpret_cast<INDEX_T *>(aligned);
 
 			switch (Config::ptrn) {
-				case RANDOM: random(); break;
-				case INCREASING: increasing(); break;
-				case DECREASING: decreasing(); break;
+				case Pattern::RANDOM: random(); break;
+				case Pattern::INCREASING: increasing(); break;
+				case Pattern::DECREASING: decreasing(); break;
 			}
 
 

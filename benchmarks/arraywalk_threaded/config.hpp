@@ -11,7 +11,7 @@
 
 namespace arraywalk {
 
-	enum pattern { RANDOM, INCREASING, DECREASING };
+	enum class Pattern { RANDOM, INCREASING, DECREASING };
 
 	using CAS_arraysize = adhd::AffineStepper<size_t>;
 	using CAS_istreams = adhd::AffineStepper<unsigned>;
@@ -34,7 +34,7 @@ namespace arraywalk {
 		static constexpr uintptr_t align_mul = 2;
 		static constexpr uintptr_t align_inc = 0;
 
-		static constexpr pattern ptrn = RANDOM;
+		static constexpr Pattern ptrn = Pattern::RANDOM;
 
 		static constexpr uint_fast32_t MiB = 1 << 8;
 	}
@@ -54,7 +54,7 @@ namespace arraywalk {
 				uintptr_t _align_max  = defaults::align_max,
 				uintptr_t _align_mul  = defaults::align_mul,
 				uintptr_t _align_inc  = defaults::align_inc,
-				pattern _ptrn         = defaults::ptrn,
+				Pattern _ptrn         = defaults::ptrn,
 				uint_fast32_t _MiB    = defaults::MiB);
 
 		size_t inline minSize() const { return getMinValue<0>(); }
@@ -71,7 +71,7 @@ namespace arraywalk {
 
 		unsigned threads_min;
 		unsigned threads_max;
-		pattern ptrn;
+		Pattern ptrn;
 		uint_fast32_t readMiB;
 	};
 }
