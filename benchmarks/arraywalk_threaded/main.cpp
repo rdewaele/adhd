@@ -20,12 +20,17 @@ static void run_test(ofstream & logfile, unsigned trial) {
 	static bool wroteHeader = false;
 	try {
 		auto && aw = ArrayWalk<INDEX_T>(Config());
-		runBenchmark(aw,
-				[&logfile, &trial] (const adhd::Timings & timings) {
-				if (!wroteHeader) { timings.formatHeader(logfile); wroteHeader = true; }
+		const adhd::timing_cb tcb =
+			[&logfile, &trial] (const adhd::Timings & timings) {
+				if (!wroteHeader) {
+					logfile << "trial,";
+					timings.formatHeader(logfile);
+					wroteHeader = true;
+				}
 				logfile << trial << "," << timings.asCSV();
 				cout << timings.asHuman() << endl;
-				});
+			};
+		runBenchmark(aw, tcb);
 	}
 	catch (const length_error &) { /* deliberately ignored */ }
 }
