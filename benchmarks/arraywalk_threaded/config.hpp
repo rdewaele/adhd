@@ -13,41 +13,33 @@ namespace arraywalk {
 
 	enum pattern { RANDOM, INCREASING, DECREASING };
 
+	using CAS_arraysize = adhd::AffineStepper<size_t>;
+	using CAS_istreams = adhd::AffineStepper<unsigned>;
+	using CAS_alignment = adhd::AffineStepper<uintptr_t>;
+
 	namespace defaults {
 		static constexpr unsigned threads_min = 1;
 		static constexpr unsigned threads_max = 4;
 
 		static constexpr size_t size_min = 1 << 12;
 		static constexpr size_t size_max = 1 << 14;
-		static constexpr unsigned size_mul = 1;
+		static constexpr size_t size_mul = 1;
 		static constexpr size_t size_inc = 1 << 12;
 
 		static constexpr unsigned istream_min = 1;
 		static constexpr unsigned istream_max = 5;
 
-		static constexpr uintptr_t align = 1 << 12;
+		static constexpr uintptr_t align_min = 1 << 12;
+		static constexpr uintptr_t align_max = 1 << 30;
+		static constexpr uintptr_t align_mul = 2;
+		static constexpr uintptr_t align_inc = 0;
 
 		static constexpr pattern ptrn = RANDOM;
 
 		static constexpr uint_fast32_t MiB = 1 << 8;
 	}
 
-	class ArraySize: public adhd::Range<size_t> {
-		public:
-			ArraySize(size_t min, size_t max, size_t inc, unsigned mul = 1u)
-				: Range(min, max), mulval(mul), incval(inc)
-			{}
-
-			virtual inline size_t increment(size_t & value) override {
-				return value = value * mulval + incval;
-			}
-
-		private:
-			const unsigned mulval;
-			const size_t incval;
-	};
-
-	struct Config: public adhd::RangeSet<ArraySize, adhd::Range<unsigned>> {
+	struct Config: public adhd::RangeSet<CAS_arraysize, CAS_istreams, CAS_alignment> {
 
 		Config(
 				unsigned _threads_min = defaults::threads_min,
@@ -58,7 +50,10 @@ namespace arraywalk {
 				size_t _size_inc      = defaults::size_inc,
 				unsigned _istream_min = defaults::istream_min,
 				unsigned _istream_max = defaults::istream_max,
-				size_t _align         = defaults::align,
+				uintptr_t _align_min  = defaults::align_min,
+				uintptr_t _align_max  = defaults::align_max,
+				uintptr_t _align_mul  = defaults::align_mul,
+				uintptr_t _align_inc  = defaults::align_inc,
 				pattern _ptrn         = defaults::ptrn,
 				uint_fast32_t _MiB    = defaults::MiB);
 
@@ -70,9 +65,12 @@ namespace arraywalk {
 		unsigned inline maxIStream() const { return getMaxValue<1>(); }
 		unsigned inline currentIStream() const { return getValue<1>(); }
 
+		uintptr_t inline minAlign() const { return getMinValue<2>(); }
+		uintptr_t inline maxAlign() const { return getMaxValue<2>(); }
+		uintptr_t inline currentAlign() const { return getValue<2>(); }
+
 		unsigned threads_min;
 		unsigned threads_max;
-		uintptr_t align;
 		pattern ptrn;
 		uint_fast32_t readMiB;
 	};

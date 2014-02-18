@@ -16,6 +16,7 @@ namespace arraywalk {
 		size_t length;
 		size_t idx_size;
 		unsigned istreams;
+		size_t alignment;
 	};
 	static_assert(std::is_pod<TimingData>::value, "struct TimingData must be a POD");
 

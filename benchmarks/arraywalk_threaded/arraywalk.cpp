@@ -72,6 +72,7 @@ namespace arraywalk {
 			// numeric_limits might not be specialized for non-standard types
 			// (e.g. __int128 with icc)
 			INDEX_T rep_length = static_cast<INDEX_T>(length);
+			const size_t align = Config::currentAlign();
 #ifdef __INTEL_COMPILER
 #pragma warning(pop)
 #endif
@@ -81,16 +82,16 @@ namespace arraywalk {
 			if (length < 4)
 				throw length_error(NEED_FOUR_ELEMENTS);
 
-			if (!util::isPowerOfTwo<size_t>(Config::align))
+			if (!util::isPowerOfTwo<size_t>(align))
 				throw domain_error(NOT_POW2_ALIGN);
 
 			// allocate with overhead to cater for later alignment
 			// arraymem must be NULL or previously allocated by this function
-			const size_t overhead = 1 + Config::align / sizeof(INDEX_T);
+			const size_t overhead = 1 + align / sizeof(INDEX_T);
 			delete[] arraymem;
 			arraymem = new INDEX_T[length + overhead];
 			const uintptr_t aligned =
-				(reinterpret_cast<uintptr_t>(arraymem) + Config::align) & (~(Config::align - 1));
+				(reinterpret_cast<uintptr_t>(arraymem) + align) & (~(align - 1));
 			array = reinterpret_cast<INDEX_T *>(aligned);
 
 			switch (Config::ptrn) {
@@ -122,7 +123,7 @@ namespace arraywalk {
 		go_wait_end();
 		timing_callback(Timings(TimingData {
 					numThreads(), threadNum,
-					cycles, reads, length, sizeof(INDEX_T), istream
+					cycles, reads, length, sizeof(INDEX_T), istream, currentAlign()
 					}));
 	}
 

@@ -25,14 +25,14 @@ namespace arraywalk {
 
 	ostream & Timings::formatHeader(ostream & out) const {
 		out << "total #threads, thread#, cycles, reads, elements, "
-			"element size, instruction streams" << endl;
+			"element size, instruction streams, alignment" << endl;
 		return out;
 	}
 
 	ostream & Timings::formatCSV(ostream & out) const {
 		return sequence(
 				out, td.totalThreads, td.threadNum, td.cycles, td.reads, td.length,
-				td.idx_size, td.istreams
+				td.idx_size, td.istreams, td.alignment
 				);
 	}
 
@@ -41,7 +41,9 @@ namespace arraywalk {
 			out << td.totalThreads << " threads; #" << td.threadNum << " | ";
 
 		out << td.length << " elements x " << Bytes(td.idx_size) << " = "
-			<< Bytes(td.length * td.idx_size) << " | " << td.istreams
+			<< Bytes(td.length * td.idx_size)
+			<< " | " << Bytes(td.alignment) << " aligned"
+			<< " | " << td.istreams
 			<< " instruction streams" << endl;
 		out << "cycles: " << td.cycles << " | ";
 		out << "reads: " << td.reads << " (" << Bytes(td.reads * td.idx_size) << ")" << endl;
