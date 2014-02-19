@@ -205,7 +205,7 @@ namespace adhd {
 				ExplicitStepper(std::initializer_list<T> vals)
 					: reset(false), values(new values_t(vals)),
 					current(values->cbegin()),
-					minValue(*current), maxValue(*values->cend())
+					minValue(*current), maxValue(*--values->cend())
 			{}
 
 				virtual void next() override {
