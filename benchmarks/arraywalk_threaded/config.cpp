@@ -13,7 +13,7 @@ namespace arraywalk {
 			uintptr_t _align_min, uintptr_t _align_max, uintptr_t _align_mul,
 			uintptr_t _align_inc, Pattern _ptrn, uint_fast32_t _MiB):
 		RangeSet(
-				CAS_arraysize(_size_min, _size_max, _size_inc, _size_mul),
+				CAS_arraysize(_size_min, _size_max, _size_mul, _size_inc),
 				CAS_istreams(_istream_min, _istream_max),
 				CAS_alignment(_align_min, _align_max, _align_mul, _align_inc)),
 		threads_min(_threads_min),
