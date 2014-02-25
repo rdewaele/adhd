@@ -1,4 +1,5 @@
 #include "benchmark.hpp"
+#include "hwcounters.hpp"
 
 #include "rdtsc.h"
 

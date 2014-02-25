@@ -30,7 +30,7 @@ CXXFLAGS := -std=c++11 -W -Wall -Wextra -pedantic \
 	$(CXXFLAGS)
 #	-DNDEBUG
 
-LDLIBS += -lbenchmark -lm -lrt -lstdc++ -pthread
+LDLIBS += -lpapi -lbenchmark -lm -lrt -lstdc++ -pthread
 LDFLAGS += -L.
 
 test: $(PROGRAM)
