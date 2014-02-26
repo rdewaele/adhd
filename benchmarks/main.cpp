@@ -256,5 +256,17 @@ int main(int argc, char * argv[]) {
 		runBenchmark(tt, tcb);
 	}
 
+	{ // hwcounters
+		const Events events {
+			hwcounters::cache::L1::DCA,
+				hwcounters::cache::L1::DCH,
+				hwcounters::cache::L1::DCM,
+		};
+		auto ctrs = PerfStat(events);
+		ctrs.start();
+		ctrs.stop();
+		for (const auto & v: ctrs.getValues())
+			std::cout << v << endl;
+	}
 	return 0;
 }
