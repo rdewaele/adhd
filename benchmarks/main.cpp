@@ -216,6 +216,15 @@ ostream & operator<<(ostream & os, const Count & c) {
 }
 
 int main(int argc, char * argv[]) {
+	// hwcounters - start cache profile of main
+	const Events events {
+		hwcounters::cache::L1::DCA,
+			hwcounters::cache::L1::DCH,
+			hwcounters::cache::L1::DCM,
+	};
+	auto ctrs = PerfStat(events);
+	ctrs.start();
+
 	// default to 16 threads max
 	unsigned nthreads = 16;
 
@@ -256,17 +265,7 @@ int main(int argc, char * argv[]) {
 		runBenchmark(tt, tcb);
 	}
 
-	{ // hwcounters
-		const Events events {
-			hwcounters::cache::L1::DCA,
-				hwcounters::cache::L1::DCH,
-				hwcounters::cache::L1::DCM,
-		};
-		auto ctrs = PerfStat(events);
-		ctrs.start();
-		ctrs.stop();
-		for (const auto & v: ctrs.getValues())
-			std::cout << v << endl;
-	}
+	// hwcounters - end
+	cout << ctrs.stop();
 	return 0;
 }
