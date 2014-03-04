@@ -4,9 +4,15 @@ LDLIBS = -lpapi
 
 CXXFLAGS := -std=c++11 $(CXXFLAGS)
 
+PAPI_INSTALL_DIR = install
+
 OBJECTS = $(SOURCES:.cpp=.o)
 
 all: $(PROGRAM)
+
+static: LDFLAGS = -static -L$(PAPI_INSTALL_DIR)/lib
+
+static: all
 
 run: $(PROGRAM)
 	./$<
@@ -25,7 +31,7 @@ PAPI_DIR = papi-5.3.0
 
 papi-lib: | $(PAPI_DIR)
 		cd $(PAPI_DIR)/src \
-		&& ./configure --prefix=$(PWD)/install --with-static-lib=yes --with-shared-lib=yes --with-perf-events \
+		&& ./configure --prefix=$(PWD)/$(PAPI_INSTALL_DIR) --with-static-lib=yes --with-shared-lib=yes --with-perf-events \
 		&& make \
 		&& make test \
 		&& make install
