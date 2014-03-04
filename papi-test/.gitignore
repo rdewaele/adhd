@@ -1,0 +1,5 @@
+# executable name
+papi-test
+
+# default local papi installation dir
+install/
