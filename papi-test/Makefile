@@ -11,6 +11,7 @@ OBJECTS = $(SOURCES:.cpp=.o)
 all: $(PROGRAM)
 
 static: LDFLAGS = -static -L$(PAPI_INSTALL_DIR)/lib
+static: CXXFLAGS := -I$(PAPI_INSTALL_DIR)/include $(CXXFLAGS)
 
 static: all
 
