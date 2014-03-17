@@ -1,5 +1,6 @@
-# executable name
-papi-test
+# executable names
+test-host
+test-mic
 
-# default local papi installation dir
-install/
+# default local papi installation dirs
+papi*
