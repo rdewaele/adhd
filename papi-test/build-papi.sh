@@ -65,14 +65,13 @@ cd "$PAPI_DIR/src"
 # Run configure according to script parameters, build and install
 #
 
-PAPI_CONF="--prefix=$PAPI_INSTALL_DIR --with-static-lib=yes --with-shared-lib=yes"
+PAPI_CONF="--prefix=$PAPI_INSTALL_DIR --with-static-lib=yes --with-shared-lib=yes --with-perf-events"
 
 if $MIC_BUILD; then
 	export I_MPI_CC="icc -mmic"
 	PAPI_CONF="$PAPI_CONF --with-mic --host=x86_64-k1om-linux --with-arch=k1om"
 else
 	export I_MPI_CC="icc"
-	PAPI_CONF="$PAPI_CONF --with-perf-events"
 fi
 
 echo "./configure $PAPI_CONF"
