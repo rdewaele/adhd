@@ -45,8 +45,17 @@ namespace adhd {
 	// clean up threads when class gets destructed (hide implementation detail)
 	ThreadedBenchmark::~ThreadedBenchmark() { joinThreads(true); }
 
+#ifdef __ICC
+				// XXX ICC spurious warning workaround - having a static_cast still
+				// triggers an implicit conversion warning, a C-style cast doesn't
+#define STATIC_CAST(t) (t)
+#else
+#define STATIC_CAST(t) static_cast<t>
+#endif
+
 	// linux-specific way of setting thread affinity
-	static inline void setaffinity_linux(const unsigned tnum, const pthread_t & thread) {
+	// TODO: integrate this code to its calling site to prevent many redundant sysconf calls
+	static inline void setaffinity_linux(const unsigned tnum, const unsigned stride, const pthread_t & thread) {
 		// CPU_SET accepts int as its first argument, implying that the total
 		// number of cores also must be <= INT_MAX
 		const long sysret = sysconf(_SC_NPROCESSORS_ONLN);
@@ -58,15 +67,21 @@ namespace adhd {
 				throw runtime_error("OS reports 0 processors online. What processor is this program even running on?");
 				break;
 			default:
-				long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
-#ifdef __ICC
-				// XXX ICC spurious warning workaround - having a static_cast still
-				// triggers an implicit conversion warning, a C-style cast doesn't
-#define STATIC_CAST(t) (t)
-#else
-#define STATIC_CAST(t) static_cast<t>
-#endif
-				int core_id = STATIC_CAST(int)(tnum % num_cores);
+				const long num_cores = sysconf(_SC_NPROCESSORS_ONLN);
+				int core_id;
+
+				if (0 == stride) {
+					core_id = 0;
+				}
+				else {
+					if (num_cores % stride)
+						throw runtime_error("Value for 'stride' must be a whole divisor of the number of processors online.");
+
+					// 'block' + 'offset in block'
+					const long cores_per_block = num_cores / stride;
+					core_id = STATIC_CAST(int)(((tnum * stride) % num_cores) + ((tnum / cores_per_block) % cores_per_block));
+				}
+
 				cpu_set_t cpuset;
 				CPU_ZERO(&cpuset);
 				CPU_SET(core_id, &cpuset);
@@ -127,7 +142,8 @@ namespace adhd {
 				bmThreads[t] = BenchmarkThread {t, this};
 				const int rc = pthread_create(&pthreadIDs[t], NULL, threadMain, &bmThreads[t]);
 				if (rc) { throw system_error(rc, generic_category(), strerror(rc)); }
-				setaffinity_linux(t, pthreadIDs[t]);
+				// TODO: propagate support for multiple thread allocation schemes
+				setaffinity_linux(t, 1, pthreadIDs[t]);
 			}
 			runningThreads = nthr;
 		}
