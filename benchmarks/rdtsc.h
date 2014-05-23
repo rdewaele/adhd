@@ -1,21 +1,21 @@
 #pragma once
 
+#include<stdint.h>
+
 #if defined(__i386__)
 
-static __inline__ unsigned long long rdtsc(void)
-{
-	unsigned long long int x;
-	__asm__ volatile (".byte 0x0f, 0x31" : "=A" (x));
-	return x;
+static inline uint64_t rdtsc(void) {
+	uint64_t stamp;
+	asm volatile ("rdtsc":"=A"(stamp));
+	return stamp;
 }
 
 #elif defined(__x86_64__)
 
-static __inline__ unsigned long long rdtsc(void)
-{
-	unsigned hi, lo;
-	__asm__ __volatile__ ("rdtsc" : "=a"(lo), "=d"(hi));
-	return ( (unsigned long long)lo)|( ((unsigned long long)hi)<<32 );
+static inline uint64_t rdtsc(void) {
+	uint32_t lo, hi;
+	asm volatile ("rdtsc":"=a"(lo),"=d"(hi));
+	return lo | ((uint64_t) hi << 32);
 }
 
 #endif
