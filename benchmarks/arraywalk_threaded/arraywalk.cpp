@@ -177,6 +177,7 @@ namespace arraywalk {
 				|| static_cast<const Config &>(*this) != rhs;
 		}
 
+#if defined(__x86_64__)
 	// the random library does not recognise __uint128_t as an integral type: specialize
 	template <>
 	__uint128_t ArrayWalk<__uint128_t>::randomIndex(__uint128_t minimum)
@@ -186,6 +187,7 @@ namespace arraywalk {
 		uniform_int_distribution<uint64_t> dis(min, max);
 		return dis(rng);
 	}
+#endif
 
 	template <typename INDEX_T>
 	INDEX_T ArrayWalk<INDEX_T>::randomIndex(INDEX_T minimum)
@@ -281,7 +283,7 @@ namespace arraywalk {
 
 	//template class ArrayWalk<uint8_t>;
 	//template class ArrayWalk<uint16_t>;
-	//template class ArrayWalk<uint32_t>;
+	template class ArrayWalk<uint32_t>;
 	template class ArrayWalk<uint64_t>;
 	//template class ArrayWalk<__uint128_t>;
 }
