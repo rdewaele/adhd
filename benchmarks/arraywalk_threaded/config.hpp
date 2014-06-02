@@ -11,7 +11,7 @@
 
 namespace arraywalk {
 
-	enum class Pattern { RANDOM, INCREASING, DECREASING };
+	enum class Pattern { RANDOM, INCREASING, INCREASING_MAXSTRIDE, DECREASING };
 
 	using CAS_arraysize = adhd::AffineStepper<size_t>;
 	using CAS_istreams = adhd::AffineStepper<unsigned>;

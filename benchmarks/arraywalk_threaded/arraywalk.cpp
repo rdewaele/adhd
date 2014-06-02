@@ -97,6 +97,7 @@ namespace arraywalk {
 			switch (Config::ptrn) {
 				case Pattern::RANDOM: random(); break;
 				case Pattern::INCREASING: increasing(); break;
+				case Pattern::INCREASING_MAXSTRIDE: increasing_maxstride(); break;
 				case Pattern::DECREASING: decreasing(); break;
 			}
 
@@ -234,6 +235,23 @@ namespace arraywalk {
 		INDEX_T idx;
 		for (idx = 0; idx < length - 1; ++idx)
 			array[idx] = static_cast<INDEX_T>(idx + 1);
+		array[idx] = 0;
+	}
+
+	template <typename INDEX_T>
+	void ArrayWalk<INDEX_T>::increasing_maxstride()
+	{
+		const INDEX_T len = static_cast<INDEX_T>(length);
+		const INDEX_T halflen = len / 2;
+		INDEX_T idx;
+
+		if (len % 2)
+			throw length_error(NOT_INDEXABLE);
+
+		for (idx = 0; idx < halflen; ++idx)
+			array[idx] = idx / halflen;
+		for (; idx < len - 1; ++idx)
+			array[idx] = 1 + idx - halflen;
 		array[idx] = 0;
 	}
 
