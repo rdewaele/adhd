@@ -118,7 +118,10 @@ namespace arraywalk {
 		uint64_t cycles;
 		uint64_t reads;
 		const unsigned istream = Config::currentIStream();
+		// warmup
+		timedwalk_loc(istream, Config::readMiB, cycles, reads);
 
+		// benchmark proper
 		go_wait_start();
 		timedwalk_loc(istream, Config::readMiB, cycles, reads);
 		go_wait_end();
