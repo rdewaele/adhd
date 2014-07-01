@@ -50,6 +50,7 @@ namespace arraywalk {
 
 				void random();
 				void increasing();
+				void increasing_maxstride();
 				void decreasing();
 
 				bool isFullCycle();
